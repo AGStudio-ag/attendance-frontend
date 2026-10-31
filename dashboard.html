@@ -402,6 +402,9 @@ body.dark .pkg:hover { box-shadow: 0 12px 24px -10px rgba(0,0,0,0.5); border-col
   margin-bottom: 16px; display: flex; align-items: baseline; gap: 4px;
 }
 .pkg-price span { font-size: 14px; font-weight: 500; font-family: var(--sans); color: var(--text-tertiary); }
+.pkg-price .cur { font-size: 16px; font-weight: 600; color: var(--text-primary); font-family: var(--mono); }
+.pkg-price .amount { font-size: 32px; font-weight: 700; color: var(--text-primary); font-family: var(--mono); letter-spacing: -0.04em; }
+.pkg-price .old { font-size: 13px; color: var(--text-tertiary); text-decoration: line-through; font-weight: 500; margin-left: 6px; }
 .pkg-desc{ font-size: 13px; color: var(--text-secondary); flex: 1; margin-bottom: var(--s-5); line-height: 1.6; }
 
 .pkg-actions{ display: flex; gap: 8px; }
@@ -426,6 +429,43 @@ body.dark .pkg:hover { box-shadow: 0 12px 24px -10px rgba(0,0,0,0.5); border-col
 
 .pay-btn .ico { font-size: 18px; fill: currentColor; stroke: none; }
 .pkg.is-disabled { opacity: 0.5; filter: grayscale(1); pointer-events: none; }
+
+/* ============================================================
+   套餐分组 / 优惠码
+   ============================================================ */
+.pkg-group { margin-bottom: var(--s-5); }
+.pkg-group:last-child { margin-bottom: 0; }
+.pkg-group-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 var(--s-3); }
+.pkg-group-head h3 { font-size: 14px; font-weight: 700; letter-spacing: .02em; }
+.pkg-group-head p { font-size: 12px; color: var(--text-tertiary); }
+.pkg-group.pro .pkg-group-head h3 { color: var(--blue); }
+.pkg-group.grade .pkg-group-head h3 { color: var(--purple); }
+
+.pkg-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.pkg-chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-secondary); background: var(--bg); white-space: nowrap; }
+.pkg-chip.on { color: var(--green); border-color: rgba(16,185,129,.35); background: var(--green-subtle); }
+.pkg-peryear { font-size: 12px; color: var(--text-tertiary); margin: -8px 0 10px; }
+.pkg-price .old { font-size: 13px; color: var(--text-tertiary); text-decoration: line-through; font-weight: 500; margin-left: 6px; }
+.pkg-price.flash { animation: pkgFlash .55s ease; }
+@keyframes pkgFlash {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.09); color: var(--blue); }
+  100% { transform: scale(1); }
+}
+.pkg.coupon-on { border-color: var(--blue); box-shadow: 0 10px 26px -14px rgba(37,99,235,.45); }
+.pkg.coupon-on::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(120deg, transparent 30%, rgba(59,130,246,.14) 50%, transparent 70%);
+  animation: couponSweep 1.1s ease;
+}
+@keyframes couponSweep { from { transform: translateX(-70%); opacity: 1; } to { transform: translateX(70%); opacity: 0; } }
+
+.coupon-banner { display: none; margin: 0 0 var(--s-4); padding: 12px 16px; border-radius: var(--radius-sm); background: var(--blue-subtle); border: 1px dashed rgba(37,99,235,.4); color: var(--blue); font-size: 13px; font-weight: 600; align-items: center; gap: 8px; }
+.coupon-banner.show { display: flex; animation: bannerIn .35s cubic-bezier(.2,.8,.2,1); }
+@keyframes bannerIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.coupon-banner .clear { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--text-tertiary); cursor: pointer; text-decoration: underline; }
+.coupon-wrap input.err { border-color: #ef4444; animation: shake .3s; }
+@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
 
 /* ============================================================
    Log / More Grid
@@ -742,7 +782,7 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
         <div class="auto-hero">
           <div>
             <h2 class="card-heading" style="margin-bottom:12px"><svg class="ico" style="color:var(--purple);"><use href="#i-moon"/></svg> 签到计划</h2>
-            <p class="auto-note">开启后，系统会在你选择的日期按设定时间自动签到。除 VIP / SVIP 外，签到时间固定 21:35；VIP / SVIP 可自定义。</p>
+            <p class="auto-note">开启后，系统会在你选择的日期按设定时间自动签到。默认 21:35；学年卡 Pro 与大一/大二/大三学年卡可自定义签到时间。</p>
             <div id="autoSignStatus" style="margin-top:16px"></div>
           </div>
           <div class="auto-clock">
@@ -927,7 +967,7 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
             <button class="more-item" data-nav="invite">
               <svg class="ico" style="color:var(--amber);"><use href="#i-gift"/></svg>
               <span>邀请好友</span>
-              <small>双方各得 10 天 VIP</small>
+              <small>双方各得 10 天会员</small>
             </button>
             <button class="more-item" data-nav="feedback">
               <svg class="ico" style="color:var(--green);"><use href="#i-message"/></svg>
@@ -961,7 +1001,7 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
         <div class="card" style="text-align:center; padding: 40px 20px;">
           <h2 class="card-heading" style="justify-content:center;margin-bottom:8px"><svg class="ico" style="color:var(--amber);"><use href="#i-gift"/></svg> 邀请好友</h2>
           <p style="font-size:14px;margin:12px 0;color:var(--text-secondary);">
-            双方各得 <strong style="color:var(--text-primary);font-weight:600;"><span id="rewardDays">10</span> 天 VIP</strong>
+            双方各得 <strong style="color:var(--text-primary);font-weight:600;"><span id="rewardDays">10</span> 天会员</strong>
           </p>
           <div style="margin:24px 0">
             <div class="invite-code" id="inviteCode" onclick="copyInviteCode()" title="点击复制">----</div>
@@ -1023,11 +1063,12 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
             <h2 class="card-heading" style="margin:0;"><svg class="ico" style="color:var(--heart);"><use href="#i-gift"/></svg> 选择套餐</h2>
             <div class="coupon-wrap" style="margin-bottom:0;">
-              <input type="text" id="couponCode" placeholder="输入优惠码" autocomplete="off">
-              <button class="btn btn-secondary" onclick="applyCoupon()">使用</button>
+              <input type="text" id="couponCode" placeholder="输入优惠码" autocomplete="off" spellcheck="false">
+              <button class="btn btn-secondary" type="button" onclick="applyCoupon()">使用</button>
             </div>
           </div>
-          
+
+          <div id="couponBanner" class="coupon-banner"></div>
           <div id="packagesList"><p class="loading">加载中…</p></div>
         </div>
 
@@ -1035,6 +1076,7 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
           <h2 class="card-heading"><svg class="ico" style="color:var(--blue);"><use href="#i-qrcode"/></svg> 扫码赞助</h2>
           <div style="text-align:center;margin:16px 0">
             <div style="font-family:var(--mono); font-size:32px;font-weight:700;letter-spacing:-0.03em;color:var(--text-primary);" id="paymentAmount">¥0.00</div>
+            <p id="paymentCouponNote" style="display:none;font-size:12px;color:var(--green);margin-top:6px;"></p>
             <p style="font-size:12px;color:var(--text-tertiary);margin-top:8px;">请准确支付上方金额，否则可能无法匹配订单。</p>
             <p style="font-size:13px;color:var(--text-secondary);margin-top:12px;font-family:var(--mono);">
               备注短码 <strong id="paymentOrderNo" style="color:var(--text-primary);"></strong>
@@ -1168,24 +1210,45 @@ const DAY_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
 const TIER_NAMES = {
   FREE: '免费',
   MONTHLY: '月卡',
-  TERM: '学期',
-  YEARLY: '学年',
-  VIP: 'VIP',
-  SVIP: 'SVIP',
-  LEGACY: '元老'
+  TERM: '学期卡',
+  YEARLY: '学年卡',
+  YEARLY_PRO: '学年卡 Pro',
+  FRESHMAN: '大一学年卡（启航卡）',
+  SOPHOMORE: '大二学年卡（续航卡）',
+  JUNIOR: '大三学年卡（冲刺卡）',
+  VIP: '学年卡 Pro',
+  SVIP: '长期会员（至毕业）',
+  LEGACY: '元老会员'
 };
 
 const TIER_COLORS = {
-  FREE: '#71717a',     // 灰
-  MONTHLY: '#0ea5e9',  // 天蓝
-  TERM: '#8b5cf6',     // 紫
-  YEARLY: '#d946ef',   // 粉紫
-  VIP: '#f59e0b',      // 琥珀金
-  SVIP: '#ef4444',     // 红
-  LEGACY: '#14223b'    // 深蓝黑
+  FREE: '#71717a',        // 灰
+  MONTHLY: '#0ea5e9',     // 天蓝
+  TERM: '#8b5cf6',        // 紫
+  YEARLY: '#d946ef',      // 粉紫
+  YEARLY_PRO: '#f59e0b',  // 琥珀金
+  FRESHMAN: '#10b981',    // 青绿
+  SOPHOMORE: '#3b82f6',   // 蓝
+  JUNIOR: '#8b5cf6',      // 紫
+  VIP: '#f59e0b',         // 历史等级，按 Pro 展示
+  SVIP: '#ef4444',        // 红
+  LEGACY: '#14223b'       // 深蓝黑
 };
 
-const CUSTOM_TIME_TIERS = ['VIP', 'SVIP'];
+// 历史等级也保留自定义时间权限
+const CUSTOM_TIME_TIERS = ['YEARLY_PRO', 'FRESHMAN', 'SOPHOMORE', 'JUNIOR', 'VIP', 'SVIP', 'LEGACY'];
+
+function currentPlanName() {
+  if (!currentUser) return '免费';
+  if (currentUser.membership && currentUser.membership.planName) return currentUser.membership.planName;
+  return TIER_NAMES[currentUser.vipTier] || (currentUser.isVip ? '会员' : '免费');
+}
+
+function currentCanCustomTime() {
+  if (!currentUser) return false;
+  if (typeof currentUser.canCustomTime === 'boolean') return currentUser.canCustomTime && !!currentUser.isVip;
+  return !!(currentUser.isVip && CUSTOM_TIME_TIERS.includes(currentUser.vipTier));
+}
 
 let sponsorOrder = null;
 let pollingTimer = null;
@@ -1403,27 +1466,17 @@ async function loadUserInfo() {
     if (sid) sid.textContent = currentUser.studentId || '';
 
     const tierKey = currentUser.vipTier || 'FREE';
-    let tierDisplay = TIER_NAMES[tierKey] || '免费';
-    let expireDate = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
-    let isPermanent = false;
-
-    // SVIP 毕业年份推算逻辑
-    if (currentUser.isVip && tierKey === 'SVIP') {
-      const yearPrefix = parseInt((currentUser.studentId || '').substring(0, 2));
-      if (!isNaN(yearPrefix) && yearPrefix > 20 && yearPrefix < 50) {
-        const gradYear = 2000 + yearPrefix + 4; // 25级 -> 2029年
-        expireDate = new Date(`${gradYear}-06-30T23:59:59`);
-        isPermanent = true;
-      }
-    }
+    const tierDisplay = currentPlanName();
+    const expireDate = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
+    const isPermanent = !!currentUser.isVip && !expireDate;
 
     const daysLeft = expireDate ? Math.max(0, Math.ceil((expireDate.getTime() - Date.now()) / 86400000)) : 0;
     const headerTier = document.getElementById('headerTier');
     if (headerTier) {
-      headerTier.textContent = isPermanent 
-        ? `${tierDisplay} · 在校永久` 
-        : (tierDisplay + (currentUser.isVip && expireDate ? ' · ' + daysLeft + '天' : ''));
-      
+      headerTier.textContent = currentUser.isVip
+        ? (isPermanent ? `${tierDisplay} · 长期` : `${tierDisplay} · ${daysLeft}天`)
+        : '免费';
+
       headerTier.style.color = TIER_COLORS[tierKey] || '#71717a';
       headerTier.style.borderColor = TIER_COLORS[tierKey] || '#e4e4e7';
       headerTier.style.background = 'transparent';
@@ -1623,7 +1676,7 @@ function getSelectedAutoSignDays() {
 }
 
 function canCustomSignTime() {
-  return !!(currentUser && currentUser.isVip && CUSTOM_TIME_TIERS.includes(currentUser.vipTier));
+  return currentCanCustomTime();
 }
 
 function renderAutoSignStatus(setting) {
@@ -1646,7 +1699,9 @@ function updateSignTimeUI(setting) {
   const tierLabel = TIER_NAMES[currentUser.vipTier] || currentUser.vipTier || '';
 
   if (input) { input.value = time; input.disabled = !custom; }
-  if (hint) hint.textContent = custom ? `当前特权：${tierLabel} 可自定义时间` : '非 VIP / SVIP 固定时间';
+  if (hint) hint.textContent = custom
+    ? `当前套餐：${currentPlanName()} · 可自定义签到时间`
+    : '当前套餐不支持自定义签到时间，固定 21:35';
   if (display) display.textContent = time;
   if (label) label.textContent = custom ? '自定义时间' : '统一时间';
 }
@@ -1836,29 +1891,22 @@ async function loadProfile() {
   document.getElementById('profileEmail').value = currentUser.email || '未绑定';
 
   const tierKey = currentUser.vipTier || 'FREE';
-  const tierName = TIER_NAMES[tierKey] || (currentUser.isVip ? '会员' : '免费');
-  
-  let vipText = '未加入支持名单';
-  let expireDate = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
-  let isPermanent = false;
+  const tierName = currentPlanName();
+
+  let vipText = '未开通会员';
+  const expireDate = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
+  const isPermanent = !!currentUser.isVip && !expireDate;
 
   if (currentUser.isVip) {
-    if (tierKey === 'SVIP') {
-      const yearPrefix = parseInt((currentUser.studentId || '').substring(0, 2));
-      if (!isNaN(yearPrefix) && yearPrefix > 20 && yearPrefix < 50) {
-        const gradYear = 2000 + yearPrefix + 4;
-        expireDate = new Date(`${gradYear}-06-30T23:59:59`);
-        isPermanent = true;
-      }
-    }
-    
-    if (expireDate && expireDate > new Date()) {
-      vipText = isPermanent ? '在校期间永久有效' : '有效至 ' + expireDate.toLocaleDateString('zh-CN');
+    if (isPermanent) {
+      vipText = '长期有效';
+    } else if (expireDate && expireDate > new Date()) {
+      vipText = '有效至 ' + expireDate.toLocaleDateString('zh-CN');
     } else {
       vipText = '已到期';
     }
   }
-  
+
   document.getElementById('profileVip').value = tierName + ' · ' + vipText;
 
   const badge = document.getElementById('memberBadge');
@@ -1877,11 +1925,10 @@ async function loadProfile() {
   const daysLeft = expireDate ? Math.max(0, Math.ceil((expireDate.getTime() - Date.now()) / 86400000)) : 0;
 
   const daysEl = document.getElementById('memberDays');
-  // 如果是永久，显示 ∞，否则显示具体天数
-  if (daysEl) daysEl.textContent = currentUser.isVip && expireDate ? (isPermanent ? '∞' : daysLeft) : '--';
-  
+  if (daysEl) daysEl.textContent = currentUser.isVip && expireDate ? daysLeft : (isPermanent ? '∞' : '--');
+
   const expireEl = document.getElementById('memberExpire');
-  if (expireEl) expireEl.textContent = expireDate ? (isPermanent ? '在校期间' : expireDate.toLocaleDateString('zh-CN')) : '--';
+  if (expireEl) expireEl.textContent = expireDate ? expireDate.toLocaleDateString('zh-CN') : (isPermanent ? '长期' : '--');
 
   const creditsEl = document.getElementById('memberCredits');
   if (creditsEl) creditsEl.textContent = Number(currentUser.signCredits || 0) + ' 次';
@@ -2040,6 +2087,89 @@ function closeFeedbackModal() {
 /* ============================================================
    Sponsor
    ============================================================ */
+const PACKAGE_GROUPS = [
+  { key: 'basic', title: '基础套餐', sub: '按月、按学期、按学年选择' },
+  { key: 'pro', title: 'Pro 套餐', sub: '标准学年权益 + 自定义会员时间' },
+  { key: 'grade', title: '年级专属套餐', sub: '一次开通，使用至毕业，长期更省' }
+];
+
+function renderPkgCard(p, discount) {
+  const pkgId = p.id || p.packageId || p._id || '';
+  const price = Number(p.price || 0);
+  const finalPrice = Math.max(0.01, Number((price - discount).toFixed(2)));
+  const hasDiscount = discount > 0;
+  const isGrade = p.group === 'grade' || p.kind === 'grade';
+  const isPro = p.group === 'pro';
+  const badge = p.badge || (isGrade ? '至毕业' : '');
+
+  const chips = [];
+  if (p.durationLabel) chips.push(`<span class="pkg-chip">${escapeHTML(p.durationLabel)}</span>`);
+  chips.push(`<span class="pkg-chip">适用：${escapeHTML(p.audience || '不限')}</span>`);
+  chips.push(p.customTime
+    ? '<span class="pkg-chip on">支持自定义时间</span>'
+    : '<span class="pkg-chip">不支持自定义时间</span>');
+
+  const perYear = p.pricePerYear
+    ? `<div class="pkg-peryear">折合每年 ¥${Number(p.pricePerYear).toFixed(2)}</div>`
+    : '';
+  const oldPrice = hasDiscount ? `<span class="old">¥${price.toFixed(2)}</span>` : '';
+
+  return `<div class="pkg ${(isGrade || isPro) ? 'best' : ''} ${hasDiscount ? 'coupon-on' : ''}" data-price-original="${price.toFixed(2)}" data-price-final="${finalPrice.toFixed(2)}">
+    <div class="pkg-tag">${escapeHTML(badge)}</div>
+    <h3>${escapeHTML(p.name || '会员套餐')}</h3>
+    <div class="pkg-price"><span class="cur">¥</span><span class="amount">${finalPrice.toFixed(2)}</span>${oldPrice}</div>
+    ${perYear}
+    <div class="pkg-meta">${chips.join('')}</div>
+    <p class="pkg-desc">${escapeHTML(p.description || '')}</p>
+    <div class="pkg-actions">
+      <button class="pay-btn wx" data-pkg="${escapeAttr(pkgId)}" data-method="wechat">
+        <svg class="ico"><use href="#i-wechat"/></svg> 微信
+      </button>
+      <button class="pay-btn ali" data-pkg="${escapeAttr(pkgId)}" data-method="alipay">
+        <svg class="ico"><use href="#i-alipay"/></svg> 支付宝
+      </button>
+    </div>
+  </div>`;
+}
+
+function animateCouponPrices(root) {
+  root.querySelectorAll('.pkg').forEach((card, index) => {
+    const from = Number(card.dataset.priceOriginal);
+    const to = Number(card.dataset.priceFinal);
+    const amountEl = card.querySelector('.amount');
+    if (!amountEl || !Number.isFinite(from) || !Number.isFinite(to) || from === to) return;
+    const duration = 620;
+    setTimeout(() => {
+      const start = performance.now();
+      const step = (now) => {
+        const progress = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        amountEl.textContent = (from + (to - from) * eased).toFixed(2);
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          amountEl.textContent = to.toFixed(2);
+          const priceEl = card.querySelector('.pkg-price');
+          if (priceEl) priceEl.classList.add('flash');
+        }
+      };
+      requestAnimationFrame(step);
+    }, index * 60);
+  });
+}
+
+function renderCouponBanner() {
+  const el = document.getElementById('couponBanner');
+  if (!el) return;
+  if (!appliedCoupon) {
+    el.className = 'coupon-banner';
+    el.innerHTML = '';
+    return;
+  }
+  el.className = 'coupon-banner show';
+  el.innerHTML = `🎟️ 优惠码 <b>${escapeHTML(appliedCoupon.code)}</b> 已生效 · 全部套餐立减 ¥${Number(appliedCoupon.discount).toFixed(2)}<span class="clear" onclick="clearCoupon()">取消使用</span>`;
+}
+
 async function loadPackages() {
   const list = document.getElementById('packagesList');
   if (!list) return;
@@ -2050,92 +2180,74 @@ async function loadPackages() {
       list.innerHTML = `<p class="empty">${escapeHTML(data.message || '加载失败')}</p>`;
       return;
     }
-    let pkgs = data.packages || data.list || data.data;
-    if (!Array.isArray(pkgs) && pkgs && typeof pkgs === 'object') {
-      const firstArray = Object.values(pkgs).find(v => Array.isArray(v));
-      if (firstArray) pkgs = firstArray;
-    }
-    if (!Array.isArray(pkgs)) { list.innerHTML = '<p class="empty">数据格式异常</p>'; return; }
-    if (pkgs.length === 0) { list.innerHTML = '<p class="empty">暂无档位</p>'; return; }
+    const pkgs = Array.isArray(data.packages) ? data.packages : [];
+    if (!pkgs.length) { list.innerHTML = '<p class="empty">暂无套餐</p>'; return; }
 
-    list.innerHTML = '<div class="pkg-grid">' + pkgs.map(p => {
-      const pkgId = p.id || p._id || p.packageId || '';
-      const isCounts = p.type === 'counts';
-      const disabledAttr = isCounts ? 'disabled' : '';
-      
-      let pkgName = p.name || '会员套餐';
-      let pkgDesc = p.description || '';
-      let pkgTag = p.badge || '';
-      let isBest = false;
-
-      // 判断是否是 SVIP（通过名称或者标识）
-      const isSvip = pkgName.includes('SVIP') || pkgName.includes('在校期间') || pkgDesc.includes('在校永久');
-      // 判断是否是学年/年卡
-      const isYear = !isSvip && (pkgName.includes('学年') || pkgName.includes('年卡') || pkgName.includes('一年'));
-
-      if (isSvip) {
-        pkgDesc = '在校期间永久有效，直至毕业';
-        isBest = true;
-        if (!pkgTag) pkgTag = '毕业前有效';
-      } else if (isYear) {
-        isBest = true;
-        if (!pkgTag) pkgTag = '推荐';
-      }
-      
-      const descHTML = isCounts ? '<span class="pkg-warn" style="color:var(--red);">暂不可用</span>' : escapeHTML(pkgDesc);
-      const bestClass = isBest ? 'best' : '';
-
-      return `<div class="pkg ${isCounts ? 'is-disabled' : ''} ${bestClass}">
-        <div class="pkg-tag">${escapeHTML(pkgTag)}</div>
-        <h3>${escapeHTML(pkgName)}</h3>
-        <div class="pkg-price">¥${Number(p.price || 0).toFixed(2)}</div>
-        <p class="pkg-desc">${descHTML}</p>
-        <div class="pkg-actions">
-          <button class="pay-btn wx" ${disabledAttr} data-pkg="${escapeAttr(pkgId)}" data-method="wechat">
-            <svg class="ico"><use href="#i-wechat"/></svg> 微信
-          </button>
-          <button class="pay-btn ali" ${disabledAttr} data-pkg="${escapeAttr(pkgId)}" data-method="alipay">
-            <svg class="ico"><use href="#i-alipay"/></svg> 支付宝
-          </button>
-        </div>
+    const discount = appliedCoupon ? Number(appliedCoupon.discount || 0) : 0;
+    list.innerHTML = PACKAGE_GROUPS.map(group => {
+      const items = pkgs.filter(p => (p.group || 'basic') === group.key);
+      if (!items.length) return '';
+      return `<div class="pkg-group ${group.key}">
+        <div class="pkg-group-head"><h3>${escapeHTML(group.title)}</h3><p>${escapeHTML(group.sub)}</p></div>
+        <div class="pkg-grid">${items.map(p => renderPkgCard(p, discount)).join('')}</div>
       </div>`;
-    }).join('') + '</div>';
+    }).join('');
 
-    list.querySelectorAll('[data-pkg]:not([disabled])').forEach(btn => {
+    list.querySelectorAll('[data-pkg]').forEach(btn => {
       btn.onclick = () => selectPackage(btn.dataset.pkg, btn.dataset.method);
     });
-  } catch (e) { list.innerHTML = `<p class="empty">网络错误</p>`; }
+    if (discount > 0) animateCouponPrices(list);
+    renderCouponBanner();
+  } catch (e) { list.innerHTML = '<p class="empty">网络错误</p>'; }
 }
 
-function applyCoupon() {
-  const code = document.getElementById('couponCode').value.trim().toUpperCase();
-  if (!code) {
-    appliedCoupon = null;
-    showToast('已清空优惠码');
-    return;
-  }
-  // 模拟验证优惠码
-  if (code === 'AG666') {
-    appliedCoupon = code;
-    showToast('优惠码验证成功！', 'success');
-  } else {
-    appliedCoupon = null;
-    showToast('无效的优惠码', 'error');
-  }
+async function applyCoupon() {
+  const input = document.getElementById('couponCode');
+  const code = ((input && input.value) || '').trim();
+  if (!code) { clearCoupon(); return; }
+  try {
+    const data = await api('/payment/coupon?code=' + encodeURIComponent(code));
+    if (!data || !data.valid) {
+      if (input) {
+        input.classList.add('err');
+        setTimeout(() => input.classList.remove('err'), 450);
+      }
+      showToast('优惠码无效', 'error');
+      return;
+    }
+    appliedCoupon = { code: data.code, discount: Number(data.discount) || 0 };
+    showToast('优惠码已生效，立减 ¥' + Number(data.discount).toFixed(2), 'success');
+    await loadPackages();
+  } catch (e) { showToast((e && e.message) || '网络错误', 'error'); }
+}
+
+function clearCoupon() {
+  appliedCoupon = null;
+  const input = document.getElementById('couponCode');
+  if (input) input.value = '';
+  loadPackages();
 }
 
 async function selectPackage(packageId, method) {
   if (!packageId) { showToast('档位信息异常', 'error'); return; }
   try {
     const body = { packageId, payMethod: method };
-    if (appliedCoupon) body.couponCode = appliedCoupon;
-    
+    if (appliedCoupon && appliedCoupon.code) body.couponCode = appliedCoupon.code;
+
     const data = await api('/payment/create-order', { method: 'POST', body });
     if (!data.success) { showToast(data.message || '创建订单失败', 'error'); return; }
     sponsorOrder = data.order;
 
     document.getElementById('paymentArea').classList.remove('hidden');
     document.getElementById('paymentAmount').textContent = '¥' + Number(data.order.amount).toFixed(2);
+    const couponNote = document.getElementById('paymentCouponNote');
+    if (couponNote) {
+      const discount = Number(data.order.couponDiscount || 0);
+      couponNote.textContent = discount > 0
+        ? `已使用优惠码 ${data.order.couponCode}，原价 ¥${Number(data.order.originalAmount || 0).toFixed(2)}，立减 ¥${discount.toFixed(2)}`
+        : '';
+      couponNote.style.display = discount > 0 ? 'block' : 'none';
+    }
     document.getElementById('paymentOrderNo').textContent = data.order.payCode || data.order.mark || data.order.orderNo;
     document.getElementById('qrCodeImage').src = method === 'alipay' ? data.qrCodes.alipay : data.qrCodes.wechat;
     document.getElementById('paymentResult').classList.add('hidden');
@@ -2175,10 +2287,12 @@ async function checkPaymentStatus(orderNo) {
 function renderSponsorSuccess(order, tier) {
   const box = document.getElementById('paymentResult');
   if (!box) return;
+  const name = (order && (order.packageName || order.planName)) || TIER_NAMES[tier] || tier || '会员';
+  const duration = (order && order.durationLabel) || (order && order.days ? `${order.days} 天` : '');
   box.classList.remove('hidden');
   box.innerHTML = '<div style="background:var(--green-subtle);border:1px solid var(--green);padding:16px;border-radius:var(--radius-sm);text-align:center">'
-    + '<p style="font-size:16px;font-weight:600;color:var(--green);margin:0 0 4px">赞助已到账</p>'
-    + '<p style="font-size:13px;color:var(--green);margin:0;font-family:var(--mono);">' + escapeHTML(TIER_NAMES[tier] || tier || '') + ' · ' + escapeHTML(String(order.days || '')) + ' 天</p></div>';
+    + '<p style="font-size:16px;font-weight:600;color:var(--green);margin:0 0 4px">权益已到账</p>'
+    + '<p style="font-size:13px;color:var(--green);margin:0;font-family:var(--mono);">' + escapeHTML(name) + (duration ? ' · ' + escapeHTML(duration) : '') + '</p></div>';
 }
 
 function openQrModal() {

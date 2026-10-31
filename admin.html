@@ -210,7 +210,7 @@
       <div id="page-dashboard">
         <div class="stats-grid">
           <div class="stat-card"><div class="stat-value" id="statTotalUsers">0</div><div class="stat-label">考勤用户</div></div>
-          <div class="stat-card"><div class="stat-value" id="statVipUsers">0</div><div class="stat-label">VIP 用户</div></div>
+          <div class="stat-card"><div class="stat-value" id="statVipUsers">0</div><div class="stat-label">会员用户</div></div>
           <div class="stat-card"><div class="stat-value" id="statTodaySigns">0</div><div class="stat-label">今日签到</div></div>
           <div class="stat-card"><div class="stat-value" id="statMarketUsers">0</div><div class="stat-label">交易用户</div></div>
         </div>
@@ -432,8 +432,8 @@
               <select id="emailRecipients">
                 <option value="">请选择</option>
                 <option value="all">全部用户</option>
-                <option value="vip">仅VIP用户</option>
-                <option value="nonVip">非VIP用户</option>
+                <option value="vip">仅会员</option>
+                <option value="nonVip">非会员</option>
               </select>
             </div>
             <div class="form-group">
@@ -468,7 +468,7 @@
         </div>
         <div class="content-card">
           <div class="card-header"><h3><i class="fas fa-gift"></i> 邀请奖励设置</h3></div>
-          <div class="form-group"><label>每人奖励 VIP 天数</label><input type="number" id="inviteRewardDays" value="10" min="1" max="365"></div>
+          <div class="form-group"><label>每人奖励会员天数</label><input type="number" id="inviteRewardDays" value="10" min="1" max="365"></div>
           <button class="btn btn-primary" onclick="saveInviteReward()"><i class="fas fa-save"></i> 保存奖励设置</button>
         </div>
 
@@ -504,7 +504,7 @@
           <button class="btn btn-gold" onclick="saveSponsorNotice()">
             <i class="fas fa-save"></i> 保存并发送邮件通知
           </button>
-          <p style="font-size:12px;color:#888;margin-top:8px;">保存后将自动向所有VIP用户发送邮件，并会在其仪表盘显示通知。</p>
+          <p style="font-size:12px;color:#888;margin-top:8px;">保存后将自动向所有会员发送邮件，并会在其仪表盘显示通知。</p>
           <span id="sponsorNoticeResult"></span>
         </div>
 
@@ -542,6 +542,60 @@
     </div>
   </div>
 
+  <!-- ===== 套餐编辑弹窗 ===== -->
+  <div class="modal" id="pkgModal">
+    <div class="modal-content" style="max-width:680px;">
+      <div class="modal-header"><h3 id="pkgModalTitle">编辑套餐</h3><span class="modal-close" onclick="closePkgModal()">&times;</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+        <div class="form-group"><label>套餐 ID *</label><input type="text" id="pkgId" placeholder="例如 monthly"></div>
+        <div class="form-group"><label>套餐名称 *</label><input type="text" id="pkgName" placeholder="例如 月卡"></div>
+        <div class="form-group"><label>价格（元）*</label><input type="number" id="pkgPrice" step="0.01" min="0" placeholder="6.66"></div>
+        <div class="form-group"><label>折合每年（元，可空）</label><input type="number" id="pkgPricePerYear" step="0.01" min="0" placeholder="15.01"></div>
+        <div class="form-group"><label>分组</label>
+          <select id="pkgGroup"><option value="basic">基础套餐</option><option value="pro">Pro 套餐</option><option value="grade">年级专属</option></select>
+        </div>
+        <div class="form-group"><label>会员等级</label>
+          <select id="pkgTier">
+            <option value="MONTHLY">MONTHLY 月卡</option>
+            <option value="TERM">TERM 学期卡</option>
+            <option value="YEARLY">YEARLY 学年卡</option>
+            <option value="YEARLY_PRO">YEARLY_PRO 学年卡 Pro</option>
+            <option value="FRESHMAN">FRESHMAN 大一（启航卡）</option>
+            <option value="SOPHOMORE">SOPHOMORE 大二（续航卡）</option>
+            <option value="JUNIOR">JUNIOR 大三（冲刺卡）</option>
+            <option value="VIP">VIP（历史，等同 Pro）</option>
+            <option value="SVIP">SVIP（历史，至毕业）</option>
+            <option value="LEGACY">LEGACY 元老</option>
+          </select>
+        </div>
+        <div class="form-group"><label>有效期类型</label>
+          <select id="pkgKind"><option value="days">固定天数</option><option value="grade">至毕业</option></select>
+        </div>
+        <div class="form-group"><label>天数 / 年限</label>
+          <div style="display:flex;gap:8px;">
+            <input type="number" id="pkgDays" min="0" placeholder="天数" style="flex:1;">
+            <input type="number" id="pkgYears" min="0" placeholder="年限" style="flex:1;">
+          </div>
+        </div>
+        <div class="form-group"><label>有效期说明</label><input type="text" id="pkgDurationLabel" placeholder="例如 一学年（365 天）"></div>
+        <div class="form-group"><label>适用对象</label><input type="text" id="pkgAudience" placeholder="不限 / 大一 / 大二 / 大三"></div>
+        <div class="form-group"><label>角标</label><input type="text" id="pkgBadge" placeholder="例如 最划算"></div>
+        <div class="form-group"><label>排序</label><input type="number" id="pkgSort" min="0" placeholder="1"></div>
+        <div class="form-group"><label>自定义时间</label>
+          <select id="pkgCustomTime"><option value="false">不支持</option><option value="true">支持</option></select>
+        </div>
+        <div class="form-group"><label>上架状态</label>
+          <select id="pkgActive"><option value="true">启用</option><option value="false">停用</option></select>
+        </div>
+        <div class="form-group" style="grid-column:1 / -1;"><label>描述</label><input type="text" id="pkgDescription" placeholder="展示在套餐卡片上的说明"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="savePkg()"><i class="fas fa-save"></i> 保存</button>
+        <button class="btn btn-outline" onclick="closePkgModal()">取消</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
@@ -556,6 +610,44 @@
     let reportsCurrentPage = 1;
     let marketItemsPage = 1;
     let marketUsersPage = 1;
+
+    // ===== 会员套餐（与后端 membership.js 保持一致） =====
+    const TIER_LABELS = {
+      FREE: '免费', MONTHLY: '月卡', TERM: '学期卡', YEARLY: '学年卡',
+      YEARLY_PRO: '学年卡 Pro',
+      FRESHMAN: '大一学年卡（启航卡）',
+      SOPHOMORE: '大二学年卡（续航卡）',
+      JUNIOR: '大三学年卡（冲刺卡）',
+      VIP: '学年卡 Pro', SVIP: '长期会员（至毕业）', LEGACY: '元老会员'
+    };
+    const CUSTOM_TIME_TIERS = ['YEARLY_PRO', 'FRESHMAN', 'SOPHOMORE', 'JUNIOR', 'VIP', 'SVIP', 'LEGACY'];
+    function tierLabel(tier) { return TIER_LABELS[tier] || tier || '免费'; }
+    function tierSupportsCustom(tier) { return CUSTOM_TIME_TIERS.includes(tier); }
+    function fmtDate(value) {
+      if (!value) return '—';
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '—';
+      return d.toLocaleDateString('zh-CN');
+    }
+    function toLocalInput(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return '';
+      const p = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+    function tierOptions(selected) {
+      const order = ['FREE', 'MONTHLY', 'TERM', 'YEARLY', 'YEARLY_PRO', 'FRESHMAN', 'SOPHOMORE', 'JUNIOR', 'VIP', 'SVIP', 'LEGACY'];
+      return order.map(t => `<option value="${t}" ${t === selected ? 'selected' : ''}>${tierLabel(t)}${['VIP', 'SVIP', 'LEGACY'].includes(t) ? '（历史等级）' : ''}</option>`).join('');
+    }
+    function updateTierHint() {
+      const el = document.getElementById('editTierHint');
+      const tier = (document.getElementById('editVipTier') || {}).value || 'FREE';
+      if (!el) return;
+      el.textContent = tierSupportsCustom(tier)
+        ? '该套餐支持自定义时间：可手动调整开始时间和到期时间，用户可自定义签到时间。'
+        : '该套餐不支持自定义时间：用户签到时间固定 21:35；管理员仍可在此手动调整日期。';
+    }
 
 
     if (!token) window.location.href = '/';
@@ -674,20 +766,22 @@
         if (data.success) {
           document.getElementById('usersTable').innerHTML = `
             <table>
-              <thead><tr><th>学号</th><th>姓名</th><th>邮箱</th><th>VIP</th><th>角色</th><th>签到统计</th><th>操作</th></tr></thead>
+              <thead><tr><th>学号</th><th>姓名</th><th>邮箱</th><th>会员套餐</th><th>角色</th><th>签到统计</th><th>操作</th></tr></thead>
               <tbody>${data.users.map(u => `
                 <tr>
                   <td>${u.studentId}</td>
                   <td>${(u.name && u.name !== u.studentId) ? u.name : '未实名'}</td>
                   <td>${u.email || '-'} ${u.emailVerified ? '✓' : ''}</td>
-                  <td>${u.isVip ? `<span class="badge badge-success">VIP ${u.vipExpireAt ? new Date(u.vipExpireAt).toLocaleDateString() : ''}</span>` : '<span class="badge badge-danger">普通</span>'}</td>
+                  <td>${u.isVip
+                    ? `<span class="badge badge-success">${tierLabel(u.vipTier)}</span><br><span style="font-size:12px;color:#94a3b8;">${fmtDate(u.vipExpireAt)}${tierSupportsCustom(u.vipTier) ? ' · 可自定义' : ''}</span>`
+                    : '<span class="badge badge-danger">普通</span>'}</td>
                   <td>${u.role === 'admin' ? '<span class="badge badge-admin">管理员</span>' : '<span class="badge badge-info">用户</span>'}</td>
                   <td>${u.successSignCount || 0}/${u.totalSignCount || 0}</td>
                   <td>
                     <div class="action-buttons">
                       <button class="btn btn-outline btn-sm" onclick="viewUser('${u._id}')" title="查看详情"><i class="fas fa-eye"></i></button>
                       <button class="btn btn-success btn-sm" onclick="adminSign('${u._id}', '${u.studentId}')" title="帮TA签到"><i class="fas fa-pen"></i></button>
-                      <button class="btn btn-warning btn-sm" onclick="quickVip('${u._id}', 30)" title="加30天VIP"><i class="fas fa-crown"></i></button>
+                      <button class="btn btn-warning btn-sm" onclick="quickVip('${u._id}', 30)" title="加30天会员"><i class="fas fa-crown"></i></button>
                       <button class="btn btn-danger btn-sm" onclick="deleteUser('${u._id}', '${u.studentId}')" title="删除用户"><i class="fas fa-trash"></i></button>
                     </div>
                   </td>
@@ -787,9 +881,14 @@
             <div class="form-group"><label>邮箱</label><input type="email" id="editEmail" value="${u.email || ''}"></div>
             <div class="form-group"><label>考勤密码</label><input type="text" id="editAttendancePassword" value="${u.attendancePassword || 'Ahgydx@920'}"></div>
             <div class="form-row">
-              <div class="form-group"><label>VIP 状态</label><select id="editVip"><option value="true" ${u.isVip ? 'selected' : ''}>是</option><option value="false" ${!u.isVip ? 'selected' : ''}>否</option></select></div>
-              <div class="form-group"><label>VIP 过期时间</label><input type="date" id="editVipExpireAt" value="${u.vipExpireAt ? new Date(u.vipExpireAt).toISOString().split('T')[0] : ''}"></div>
+              <div class="form-group"><label>会员套餐</label><select id="editVipTier" onchange="updateTierHint()">${tierOptions(u.vipTier || 'FREE')}</select></div>
+              <div class="form-group"><label>会员状态</label><select id="editVip"><option value="true" ${u.isVip ? 'selected' : ''}>生效</option><option value="false" ${!u.isVip ? 'selected' : ''}>未生效</option></select></div>
             </div>
+            <div class="form-row">
+              <div class="form-group"><label>开始时间</label><input type="datetime-local" id="editVipStartAt" value="${toLocalInput(u.vipStartAt)}"></div>
+              <div class="form-group"><label>到期时间</label><input type="datetime-local" id="editVipExpireAt" value="${toLocalInput(u.vipExpireAt)}"></div>
+            </div>
+            <p id="editTierHint" style="font-size:12px;color:#94a3b8;margin:0 0 12px;"></p>
             <div class="form-row">
               <div class="form-group"><label>角色</label><select id="editRole"><option value="user" ${u.role==='user'?'selected':''}>普通用户</option><option value="admin" ${u.role==='admin'?'selected':''}>管理员</option></select></div>
               <div class="form-group"><label>账号状态</label><select id="editActive"><option value="true" ${u.isActive!==false?'selected':''}>启用</option><option value="false" ${u.isActive===false?'selected':''}>禁用</option></select></div>
@@ -797,7 +896,7 @@
             <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
               <button class="btn btn-primary" onclick="saveUserChanges()"><i class="fas fa-save"></i> 保存修改</button>
               <button class="btn btn-success" onclick="adminSignFromDetail('${u._id}','${u.studentId}')"><i class="fas fa-pen"></i> 帮TA签到</button>
-              <button class="btn btn-warning" onclick="addVipDays(30)"><i class="fas fa-crown"></i> +30天VIP</button>
+              <button class="btn btn-warning" onclick="addVipDays(30)"><i class="fas fa-crown"></i> +30天会员</button>
               <button class="btn btn-danger" onclick="deleteUser('${u._id}','${u.studentId}')"><i class="fas fa-trash"></i> 删除用户</button>
             </div>
           `;
@@ -815,6 +914,7 @@
               <span style="margin-left:10px;font-size:13px;">${l.message||''}</span>
             </div>`).join('') : '<p>暂无记录</p>';
           document.getElementById('userDetailModal').classList.add('show');
+          updateTierHint();
         }
       } catch (e) { showToast('加载失败', 'error'); }
     }
@@ -828,7 +928,9 @@
             email: document.getElementById('editEmail')?.value,
             attendancePassword: document.getElementById('editAttendancePassword')?.value,
             isVip: document.getElementById('editVip')?.value === 'true',
-            vipExpireAt: document.getElementById('editVipExpireAt')?.value,
+            vipTier: document.getElementById('editVipTier')?.value,
+            vipStartAt: document.getElementById('editVipStartAt')?.value || undefined,
+            vipExpireAt: document.getElementById('editVipExpireAt')?.value || undefined,
             role: document.getElementById('editRole')?.value,
             isActive: document.getElementById('editActive')?.value === 'true'
           })
@@ -850,7 +952,7 @@
           method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ isVip: true, vipExpireAt: expireAt.toISOString() })
         });
-        if ((await res.json()).success) { showToast(`已添加 ${days} 天 VIP`, 'success'); viewUser(currentUserId); reloadActiveUserPage(); }
+        if ((await res.json()).success) { showToast(`已添加 ${days} 天会员`, 'success'); viewUser(currentUserId); reloadActiveUserPage(); }
       } catch (e) { showToast('操作失败', 'error'); }
     }
 
@@ -867,7 +969,7 @@
           method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ isVip: true, vipExpireAt: expireAt.toISOString() })
         });
-        showToast(`已添加 ${days} 天 VIP`, 'success');
+        showToast(`已添加 ${days} 天会员`, 'success');
         loadUsers(currentPage);
       } catch (e) { showToast('操作失败', 'error'); }
     }
@@ -899,6 +1001,9 @@
     });
 
     // ========== 套餐管理 ==========
+    let adminPkgCache = [];
+    let editingPkgId = null;
+
     async function loadAdminPackages() {
       const box = document.getElementById('adminPackagesTable');
       if (!box) return;
@@ -906,50 +1011,119 @@
         const res = await fetch(`${API_BASE}/admin/sponsor-packages`, { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
         if (!data.success || !data.packages || !data.packages.length) { box.innerHTML = '<p class="empty">暂无套餐</p>'; return; }
-        box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>套餐</th><th>价格</th><th>类型</th><th>天数</th><th>次数</th><th>状态</th><th>操作</th></tr></thead><tbody>' +
-          data.packages.map(p => '<tr><td>' + (p.name || '') + '<br><span style="color:#94a3b8;font-size:12px;">' + (p.packageId || '') + '</span></td>' +
-            '<td>¥' + Number(p.price || 0).toFixed(2) + '</td><td>' + (p.type === 'counts' ? '次数卡' : '时间卡') + '</td>' +
-            '<td>' + (p.days || 0) + '</td><td>' + (p.counts || 0) + '</td><td>' + (p.active ? '启用' : '停用') + '</td>' +
-            '<td><button class="btn btn-outline" style="padding:6px 10px;font-size:12px;" onclick="adminEditPackage(\'' + p._id + '\')">编辑</button> ' +
-            '<button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="adminDeletePackage(\'' + p._id + '\')">删除</button></td></tr>').join('') +
+        adminPkgCache = data.packages;
+        const groupNames = { basic: '基础', pro: 'Pro', grade: '年级' };
+        box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>套餐</th><th>价格</th><th>有效期</th><th>适用对象</th><th>自定义时间</th><th>状态</th><th>操作</th></tr></thead><tbody>' +
+          data.packages.map(p => {
+            const duration = p.durationLabel || (p.kind === 'grade' ? '至毕业' : (p.days ? p.days + ' 天' : (p.counts ? p.counts + ' 次' : '—')));
+            return '<tr><td>' + (p.name || '') +
+              '<br><span style="color:#94a3b8;font-size:12px;">' + (p.packageId || '') + ' · ' + (groupNames[p.group] || '基础') + ' · ' + tierLabel(p.tier) + '</span></td>' +
+              '<td>¥' + Number(p.price || 0).toFixed(2) + (p.pricePerYear ? '<br><span style="color:#94a3b8;font-size:12px;">折合 ¥' + Number(p.pricePerYear).toFixed(2) + '/年</span>' : '') + '</td>' +
+              '<td>' + duration + '</td><td>' + (p.audience || '不限') + '</td>' +
+              '<td>' + (p.customTime ? '<span class="badge badge-success">支持</span>' : '<span class="badge badge-info">不支持</span>') + '</td>' +
+              '<td>' + (p.active ? '启用' : '停用') + '</td>' +
+              '<td><button class="btn btn-outline" style="padding:6px 10px;font-size:12px;" onclick="adminEditPackage(\'' + p._id + '\')">编辑</button> ' +
+              '<button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="adminDeletePackage(\'' + p._id + '\')">删除</button></td></tr>';
+          }).join('') +
           '</tbody></table></div>';
       } catch (e) { box.innerHTML = '<p class="empty">加载失败</p>'; }
     }
-    async function adminAddPackage() {
-      const name = prompt('套餐名称，例如：月卡');
-      if (!name) return;
-      const price = prompt('价格，例如：6.66');
-      if (price === null) return;
-      const type = prompt('类型：days=时间卡，counts=次数卡', 'days') || 'days';
-      const days = type === 'days' ? prompt('天数，例如：30', '30') : '0';
-      const counts = type === 'counts' ? prompt('次数，例如：10', '10') : '0';
-      const res = await fetch(`${API_BASE}/admin/sponsor-packages`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), price: Number(price), type, days: Number(days || 0), counts: Number(counts || 0), description: name.trim() })
-      });
-      const data = await res.json();
-      alert(data.message || (data.success ? '已新增' : '新增失败'));
-      loadAdminPackages();
+
+    function adminAddPackage() {
+      editingPkgId = null;
+      document.getElementById('pkgModalTitle').textContent = '新增套餐';
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+      setVal('pkgId', '');
+      setVal('pkgName', '');
+      setVal('pkgPrice', '');
+      setVal('pkgPricePerYear', '');
+      setVal('pkgGroup', 'basic');
+      setVal('pkgTier', 'MONTHLY');
+      setVal('pkgKind', 'days');
+      setVal('pkgDays', '30');
+      setVal('pkgYears', '0');
+      setVal('pkgDurationLabel', '30 天');
+      setVal('pkgAudience', '不限');
+      setVal('pkgBadge', '');
+      setVal('pkgSort', '99');
+      setVal('pkgCustomTime', 'false');
+      setVal('pkgActive', 'true');
+      setVal('pkgDescription', '');
+      document.getElementById('pkgModal').classList.add('show');
     }
-    async function adminEditPackage(id) {
-      const name = prompt('新名称（留空不改）');
-      const price = prompt('新价格（留空不改）');
-      if (name === null && price === null) return;
-      const body = {};
-      if (name) body.name = name.trim();
-      if (price) body.price = Number(price);
-      const res = await fetch(`${API_BASE}/admin/sponsor-packages/${id}`, {
-        method: 'PUT',
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      alert(data.message || (data.success ? '已保存' : '保存失败'));
-      loadAdminPackages();
+
+    function adminEditPackage(id) {
+      const p = adminPkgCache.find(item => item._id === id);
+      if (!p) return;
+      editingPkgId = id;
+      document.getElementById('pkgModalTitle').textContent = '编辑套餐';
+      const setVal = (elId, v) => { const el = document.getElementById(elId); if (el) el.value = v; };
+      setVal('pkgId', p.packageId || '');
+      setVal('pkgName', p.name || '');
+      setVal('pkgPrice', p.price != null ? p.price : '');
+      setVal('pkgPricePerYear', p.pricePerYear != null ? p.pricePerYear : '');
+      setVal('pkgGroup', p.group || 'basic');
+      setVal('pkgTier', p.tier || 'MONTHLY');
+      setVal('pkgKind', p.kind || 'days');
+      setVal('pkgDays', p.days || 0);
+      setVal('pkgYears', p.years || 0);
+      setVal('pkgDurationLabel', p.durationLabel || '');
+      setVal('pkgAudience', p.audience || '不限');
+      setVal('pkgBadge', p.badge || '');
+      setVal('pkgSort', p.sort != null ? p.sort : 99);
+      setVal('pkgCustomTime', p.customTime ? 'true' : 'false');
+      setVal('pkgActive', p.active ? 'true' : 'false');
+      setVal('pkgDescription', p.description || '');
+      document.getElementById('pkgModal').classList.add('show');
     }
+
+    function closePkgModal() {
+      document.getElementById('pkgModal').classList.remove('show');
+      editingPkgId = null;
+    }
+
+    async function savePkg() {
+      const getVal = (id) => (document.getElementById(id) || {}).value;
+      const name = (getVal('pkgName') || '').trim();
+      const price = Number(getVal('pkgPrice'));
+      if (!name || !Number.isFinite(price) || price < 0) { showToast('请填写套餐名称和价格', 'error'); return; }
+      const kind = getVal('pkgKind') === 'grade' ? 'grade' : 'days';
+      const body = {
+        packageId: (getVal('pkgId') || '').trim(),
+        name,
+        price,
+        pricePerYear: getVal('pkgPricePerYear') === '' ? null : Number(getVal('pkgPricePerYear')),
+        group: getVal('pkgGroup'),
+        tier: getVal('pkgTier'),
+        kind,
+        type: 'days',
+        days: kind === 'days' ? Number(getVal('pkgDays') || 0) : 0,
+        years: kind === 'grade' ? Number(getVal('pkgYears') || 0) : 0,
+        durationLabel: (getVal('pkgDurationLabel') || '').trim(),
+        audience: (getVal('pkgAudience') || '不限').trim(),
+        badge: (getVal('pkgBadge') || '').trim(),
+        sort: Number(getVal('pkgSort') || 99),
+        customTime: getVal('pkgCustomTime') === 'true',
+        active: getVal('pkgActive') === 'true',
+        description: (getVal('pkgDescription') || '').trim()
+      };
+      try {
+        const url = editingPkgId ? `${API_BASE}/admin/sponsor-packages/${editingPkgId}` : `${API_BASE}/admin/sponsor-packages`;
+        const res = await fetch(url, {
+          method: editingPkgId ? 'PUT' : 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!data.success) { showToast(data.message || '保存失败', 'error'); return; }
+        showToast(editingPkgId ? '套餐已保存' : '套餐已新增', 'success');
+        closePkgModal();
+        loadAdminPackages();
+      } catch (e) { showToast('保存失败', 'error'); }
+    }
+
     async function adminDeletePackage(id) {
-      if (!confirm('确定删除这个套餐？')) return;
+      if (!confirm('确定删除这个套餐？历史订单不会受影响。')) return;
       const res = await fetch(`${API_BASE}/admin/sponsor-packages/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       alert(data.message || (data.success ? '已删除' : '删除失败'));
@@ -972,19 +1146,21 @@
         const data = await res.json();
         if (!data.success) { box.innerHTML = '<p class="empty">加载失败</p>'; return; }
         if (!data.orders.length) { box.innerHTML = '<p class="empty">暂无赞助订单</p>'; return; }
-        const tiers = { MONTHLY: '月卡', TERM: '学期', YEARLY: '学年', VIP: 'VIP', SVIP: 'SVIP' };
-        box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>订单号</th><th>用户</th><th>档位</th><th>金额</th><th>状态</th><th>核对</th><th>支付备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody>' +
+        box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>订单号</th><th>用户</th><th>套餐</th><th>金额</th><th>状态</th><th>核对</th><th>支付备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody>' +
           data.orders.map(o => {
             const u = o.userId || {};
             const canConfirm = o.status === 'granted' && o.reviewStatus !== 'confirmed';
             const canRevoke = o.status === 'granted' && o.reviewStatus !== 'rejected';
             const actions = (canConfirm ? '<button class="btn btn-success" style="padding:6px 10px;font-size:12px;" onclick="confirmSponsorOrder(\'' + o._id + '\')">确认到账</button> ' : '') +
               (canRevoke ? '<button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="revokeSponsorOrder(\'' + o._id + '\')">取消权益</button>' : '');
+            const planName = o.packageName || tierLabel(o.tier);
+            const duration = o.durationLabel || (o.days ? o.days + ' 天' : '');
+            const coupon = o.couponDiscount > 0 ? '<br><span style="font-size:12px;color:#f59e0b;">优惠码 ' + escSponsor(o.couponCode) + ' -¥' + Number(o.couponDiscount).toFixed(2) + '</span>' : '';
             return '<tr>' +
               '<td style="font-size:12px;">' + escSponsor(o.orderNo) + '</td>' +
               '<td>' + escSponsor(u.studentId || '') + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(u.name || '') + '</span></td>' +
-              '<td>' + escSponsor(tiers[o.tier] || o.tier) + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(o.days) + '天</span></td>' +
-              '<td>¥' + Number(o.amount || 0).toFixed(2) + '</td>' +
+              '<td>' + escSponsor(planName) + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(duration) + '</span></td>' +
+              '<td>¥' + Number(o.amount || 0).toFixed(2) + coupon + '</td>' +
               '<td>' + escSponsor(o.status) + '</td>' +
               '<td>' + escSponsor(o.reviewStatus) + '</td>' +
               '<td style="max-width:160px;word-break:break-all;font-size:12px;">' + escSponsor(o.paymentRef || o.claimNote || '') + '</td>' +
@@ -1305,7 +1481,7 @@
         const data = await res.json();
         if (data.success) {
           document.getElementById('emailRecipientStats').innerHTML = `
-            📊 可发送对象：<strong>${data.total}</strong> 位非游客用户 | VIP：<strong>${data.vip}</strong> | 含游客总计：<strong>${data.all}</strong>
+            📊 可发送对象：<strong>${data.total}</strong> 位非游客用户 | 会员：<strong>${data.vip}</strong> | 含游客总计：<strong>${data.all}</strong>
           `;
         }
       } catch (e) {}
@@ -1428,7 +1604,7 @@
         alert('请填写完整内容');
         return;
       }
-      if (!confirm('保存后将立即向所有VIP用户发送邮件，确定吗？')) return;
+      if (!confirm('保存后将立即向所有会员发送邮件，确定吗？')) return;
       const btn = document.querySelector('.btn-gold');
       btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
       try {
@@ -1567,6 +1743,7 @@
     // ========== 事件绑定 ==========
     document.getElementById('userDetailModal').addEventListener('click', function(e) { if (e.target === this) closeUserModal(); });
     document.getElementById('replyModal').addEventListener('click', function(e) { if (e.target === this) closeReplyModal(); });
+    document.getElementById('pkgModal').addEventListener('click', function(e) { if (e.target === this) closePkgModal(); });
 
     // ========== 初始化 ==========
     checkAdmin();
