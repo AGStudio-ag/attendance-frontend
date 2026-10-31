@@ -1696,7 +1696,6 @@ function updateSignTimeUI(setting) {
 
   const custom = canCustomSignTime();
   const time = (setting && setting.signTime) || '21:35';
-  const tierLabel = TIER_NAMES[currentUser.vipTier] || currentUser.vipTier || '';
 
   if (input) { input.value = time; input.disabled = !custom; }
   if (hint) hint.textContent = custom
