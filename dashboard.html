@@ -882,41 +882,28 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
             </div>
           </div>
 
-          <div class="setting-row">
-            <div class="setting-copy">
-              <strong>成功后邮件通知</strong>
-              <p>签到成功时发一封邮件。</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="notifyOnSuccess">
-              <span class="toggle-track"></span>
-            </label>
-          </div>
-
-          <div class="setting-row">
-            <div class="setting-copy">
-              <strong>失败后邮件提醒</strong>
-              <p>自动签到失败时第一时间提醒。</p>
-            </div>
-            <label class="toggle">
-              <input type="checkbox" id="notifyOnFailure">
-              <span class="toggle-track"></span>
-            </label>
-          </div>
+          <p style="font-size:12px;color:var(--text-tertiary);margin:16px 0 0;">
+            签到这个结果要不要通知你、走微信还是邮件，统一在下面「签到结果通知设置」里选。
+          </p>
 
           <button class="btn btn-primary btn-block" onclick="saveAutoSignSetting()" style="margin-top:24px">
             <svg class="ico"><use href="#i-check"/></svg> 保存设置
           </button>
         </div>
-      </div>
 
-      <!-- ================= 微信通知（WxPusher 服务号）================= -->
-      <div class="card" style="margin-top:16px;">
-        <h2 class="card-heading"><svg class="ico" style="color:var(--blue);"><use href="#i-calendar"/></svg> 微信通知</h2>
-        <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;">
-          绑定后每天自动签到的结果会直接发到微信（关注 WxPusher 服务号即可，不用安装 App）。
-        </p>
-        <div id="wxNotifyBox">加载中…</div>
+        <!-- ================= 签到结果通知设置（微信/邮件 × 仅失败/总是）================= -->
+        <div class="card" style="margin-top:16px;">
+          <h2 class="card-heading"><svg class="ico" style="color:var(--blue);"><use href="#i-calendar"/></svg> 签到结果通知设置</h2>
+          <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;">
+            微信免费且即时；邮件作为兜底——只有微信没发出去时才会发邮件，省邮件额度。
+          </p>
+          <div id="notifySettingsBox">加载中…</div>
+          <div id="notifySaveRow" class="hidden" style="margin-top:18px;">
+            <button class="btn btn-primary btn-block" onclick="saveNotifySettings()">
+              <svg class="ico"><use href="#i-check"/></svg> 保存通知设置
+            </button>
+          </div>
+        </div>
       </div>
 
       <div id="wxQrModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:center;justify-content:center;">
@@ -932,7 +919,7 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
       <!-- ================= 邮箱 ================= -->
       <div id="page-email" class="page">
         <h1 class="page-title">邮箱</h1>
-        <p class="page-sub">绑定后签到成功或失败都会收到提醒。</p>
+        <p class="page-sub">绑定并验证后，可在「签到结果通知设置」里选择用邮件接收签到结果。</p>
 
         <div class="card">
           <h2 class="card-heading"><svg class="ico" style="color:var(--blue);"><use href="#i-mail"/></svg> 邮箱绑定</h2>
@@ -1346,7 +1333,7 @@ let pollingCount = 0;
 const POLLING_MAX = 60;
 let qrViewed = false;
 let themeSwitching = false;
-let autoSignState = { enabled: false, customDays: [], signTime: '21:35', notifyOnSuccess: false, notifyOnFailure: false };
+let autoSignState = { enabled: false, customDays: [], signTime: '21:35' };
 let statsState = { todaySigns: 0, todaySuccess: 0, autoSignEnabled: false };
 let appliedCoupon = null;
 
@@ -1682,18 +1669,15 @@ async function loadActiveSubs() {
     autoSignState = {
       enabled: !!s.enabled,
       customDays: Array.isArray(s.customDays) ? s.customDays.map(Number) : [],
-      signTime: s.signTime || '21:35',
-      notifyOnSuccess: s.notifyOnSuccess !== false,
-      notifyOnFailure: s.notifyOnFailure !== false
+      signTime: s.signTime || '21:35'
     };
 
     if (!s.enabled) {
       box.innerHTML = '<p class="empty" style="text-align:left;padding:0;">自动签到未开启。请前往「自动签到」页面选择日期并保存。</p>';
     } else {
       const dayText = autoSignState.customDays.length ? autoSignState.customDays.map(d => DAY_NAMES[d]).join('、') : '未选择';
-      const mailText = (s.notifyOnSuccess || s.notifyOnFailure) ? '邮件提醒已开启' : '未开启邮件提醒';
       box.innerHTML = `<div class="row">
-        <div><div class="row-title">自动签到已开启</div><p class="row-sub"><svg class="ico" style="color:var(--blue);"><use href="#i-clock"/></svg> ${escapeHTML(autoSignState.signTime)} · 每周 ${escapeHTML(dayText)} · ${mailText}</p></div>
+        <div><div class="row-title">自动签到已开启</div><p class="row-sub"><svg class="ico" style="color:var(--blue);"><use href="#i-clock"/></svg> ${escapeHTML(autoSignState.signTime)} · 每周 ${escapeHTML(dayText)}</p></div>
         <span class="badge badge-success">运行中</span>
       </div>`;
     }
@@ -1861,17 +1845,6 @@ function renderEmailWarning() {
   renderEmailBanner();
   renderSponsorCard();
   renderCheckinCard();
-  ['notifyOnSuccess', 'notifyOnFailure'].forEach(id => {
-    const cb = document.getElementById(id);
-    if (!cb) return;
-    cb.onchange = function () {
-      if (this.checked && !currentUser.emailVerified) {
-        this.checked = false;
-        showToast('请先绑定邮箱', 'warning');
-        box.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    };
-  });
 }
 
 function todayKeyBeijing() {
@@ -1955,14 +1928,10 @@ async function loadAutoSignSetting() {
     autoSignState = {
       enabled: !!setting.enabled,
       customDays: Array.isArray(setting.customDays) ? setting.customDays.map(Number) : [],
-      signTime: setting.signTime || '21:35',
-      notifyOnSuccess: setting.notifyOnSuccess !== false,
-      notifyOnFailure: setting.notifyOnFailure !== false
+      signTime: setting.signTime || '21:35'
     };
 
     document.getElementById('autoSignEnabled').checked = !!setting.enabled;
-    document.getElementById('notifyOnSuccess').checked = setting.notifyOnSuccess !== false;
-    document.getElementById('notifyOnFailure').checked = setting.notifyOnFailure !== false;
 
     setAutoSignDays(setting.customDays);
     updateSignTimeUI(setting);
@@ -1982,18 +1951,12 @@ async function saveAutoSignSetting() {
   if (selectedDays.length === 0) { showToast('请至少选择一天', 'error'); return; }
 
   const timeInput = document.getElementById('autoSignTime');
-  const emailVerified = !!currentUser.emailVerified;
-  const wantSuccess = document.getElementById('notifyOnSuccess').checked;
-  const wantFailure = document.getElementById('notifyOnFailure').checked;
 
-  if (!emailVerified && (wantSuccess || wantFailure)) { showToast('请先绑定邮箱', 'warning'); return; }
-
+  // 通知渠道/时机由下方「签到结果通知设置」统一管理，这里只管签到计划
   const body = {
     enabled: document.getElementById('autoSignEnabled').checked,
     customDays: selectedDays,
-    signTime: canCustomSignTime() && timeInput ? timeInput.value : '21:35',
-    notifyOnSuccess: emailVerified && wantSuccess,
-    notifyOnFailure: emailVerified && wantFailure
+    signTime: canCustomSignTime() && timeInput ? timeInput.value : '21:35'
   };
 
   try {
@@ -2004,9 +1967,7 @@ async function saveAutoSignSetting() {
       autoSignState = {
         enabled: !!next.enabled,
         customDays: Array.isArray(next.customDays) ? next.customDays.map(Number) : selectedDays,
-        signTime: next.signTime || body.signTime,
-        notifyOnSuccess: !!next.notifyOnSuccess,
-        notifyOnFailure: !!next.notifyOnFailure
+        signTime: next.signTime || body.signTime
       };
       renderAutoSignStatus(autoSignState);
       renderOnboarding(); loadStats(); loadActiveSubs();
@@ -2017,28 +1978,75 @@ async function saveAutoSignSetting() {
 /* ============================================================
    Email
    ============================================================ */
-// ===== 微信通知绑定（WxPusher 服务号，扫码即绑，无需安装 App）=====
+// ===== 签到结果通知设置（微信/邮件 × 仅失败/总是，HANDOFF §16）=====
 let wxPollTimer = null;
 
-async function loadWxNotifyStatus() {
-  const box = document.getElementById('wxNotifyBox');
+async function loadNotifySettings() {
+  const box = document.getElementById('notifySettingsBox');
   if (!box) return;
   try {
-    const d = await api('/user/wxpusher/status');
-    if (!d.success) { box.innerHTML = '<p class="empty">' + (d.message || '状态读取失败') + '</p>'; return; }
-    if (d.bound) {
-      const t = d.bindTime ? new Date(d.bindTime).toLocaleString('zh-CN') : '';
-      box.innerHTML = '<div class="setting-row" style="justify-content:flex-start;gap:12px;">' +
-        '<div class="setting-copy"><strong>✅ 已绑定微信，每日将接收签到结果</strong><p>' + (t ? '绑定时间：' + t : '') + '</p></div>' +
-        '<button class="btn btn-outline btn-sm" onclick="unbindWx()">解除绑定</button></div>';
-    } else {
-      box.innerHTML = '<div class="setting-row" style="justify-content:flex-start;gap:12px;">' +
-        '<div class="setting-copy"><strong>接收微信通知</strong><p>每天自动签到的成功/失败结果，直接发到微信。</p></div>' +
-        '<button class="btn btn-primary btn-sm" onclick="startWxBind()">绑定微信</button></div>';
-    }
+    const d = await api('/user/notify-settings'); // api() 已返回解析后的 JSON，不要再 .json()
+    if (!d.success) { box.innerHTML = '<p class="empty">' + escapeHTML(d.message || '状态读取失败') + '</p>'; return; }
+    renderNotifySettings(d);
   } catch (e) {
-    box.innerHTML = '<p class="empty">状态读取失败：' + (e.message || '') + ' <button class="btn btn-outline btn-sm" onclick="loadWxNotifyStatus()">重试</button></p>';
+    box.innerHTML = '<p class="empty">状态读取失败：' + escapeHTML(e.message || '') +
+      ' <button class="btn btn-outline btn-sm" onclick="loadNotifySettings()">重试</button></p>';
   }
+}
+
+function renderNotifySettings(d) {
+  const box = document.getElementById('notifySettingsBox');
+  if (!box) return;
+  const s = d.settings || {};
+  const ch = Array.isArray(s.channels) ? s.channels : [];
+  const avail = d.available || {};
+  const level = s.level || 'failure_only';
+  const wxOn = avail.wechat && ch.indexOf('wechat') >= 0;
+  const mailOn = avail.email && ch.indexOf('email') >= 0;
+  const emailText = d.emailVerified
+    ? '发到 ' + escapeHTML(d.email || '') + '（微信没发出去时才兜底）'
+    : '未绑定邮箱，先到「邮箱」页绑定并验证';
+
+  const wxRow = d.wxpusherBound
+    ? '<div class="setting-row"><div class="setting-copy"><strong>微信</strong><p>✅ 已绑定，推送免费</p></div>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+      '<label class="toggle"><input type="checkbox" id="ncWechat" ' + (wxOn ? 'checked' : '') + '><span class="toggle-track"></span></label>' +
+      '<button class="btn btn-outline btn-sm" onclick="unbindWx()">解绑</button></div></div>'
+    : '<div class="setting-row"><div class="setting-copy"><strong>微信</strong><p>未绑定，扫码关注后可用（免费、即时）</p></div>' +
+      '<div style="display:flex;align-items:center;gap:10px;">' +
+      '<label class="toggle"><input type="checkbox" id="ncWechat" disabled><span class="toggle-track"></span></label>' +
+      '<button class="btn btn-primary btn-sm" onclick="startWxBind()">绑定微信</button></div></div>';
+
+  box.innerHTML = wxRow +
+    '<div class="setting-row"><div class="setting-copy"><strong>邮件</strong><p>' + emailText + '</p></div>' +
+    '<label class="toggle"><input type="checkbox" id="ncEmail" ' + (mailOn ? 'checked' : '') + (avail.email ? '' : ' disabled') + '><span class="toggle-track"></span></label></div>' +
+    '<div style="margin-top:18px;">' +
+      '<strong style="font-size:14px;">什么时候通知</strong>' +
+      '<p style="font-size:12px;color:var(--text-tertiary);margin:4px 0 10px;">默认只在失败时通知，成功不打扰。</p>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:8px;cursor:pointer;"><input type="radio" name="notifyLevel" value="failure_only" ' + (level === 'failure_only' ? 'checked' : '') + '> 仅失败时通知</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="radio" name="notifyLevel" value="always" ' + (level === 'always' ? 'checked' : '') + '> 成功和失败都通知</label>' +
+    '</div>' +
+    (s.configured ? '' : '<p style="font-size:12px;color:var(--text-tertiary);margin-top:12px;">当前沿用默认设置；保存后会记住你的选择。</p>');
+
+  const saveRow = document.getElementById('notifySaveRow');
+  if (saveRow) saveRow.classList.remove('hidden');
+}
+
+async function saveNotifySettings() {
+  const channels = [];
+  const wx = document.getElementById('ncWechat');
+  const mail = document.getElementById('ncEmail');
+  if (wx && wx.checked) channels.push('wechat');
+  if (mail && mail.checked) channels.push('email');
+  const levelEl = document.querySelector('input[name="notifyLevel"]:checked');
+  const level = levelEl ? levelEl.value : 'failure_only';
+  try {
+    const d = await api('/user/notify-settings', { method: 'POST', body: { channels, level } });
+    if (d.success) {
+      showToast('通知设置已保存', 'success');
+      renderNotifySettings(d);
+    } else { showToast(d.message || '保存失败', 'error'); }
+  } catch (e) { showToast((e && e.message) || '网络错误', 'error'); }
 }
 
 async function startWxBind() {
@@ -2066,8 +2074,8 @@ async function pollWxBind() {
     const d = await api('/user/wxpusher/status');
     if (d.bound) {
       closeWxQr();
-      alert('✅ 微信绑定成功，之后每天会自动收到签到结果');
-      loadWxNotifyStatus();
+      alert('✅ 微信绑定成功，记得在上方打开「微信」开关并保存');
+      loadNotifySettings();
       return;
     }
     if (d.expired) {
@@ -2093,11 +2101,11 @@ async function unbindWx() {
   if (!confirm('确定解除微信绑定？解除后将不再收到微信通知。')) return;
   try {
     await api('/user/wxpusher/unbind', { method: 'POST' });
-    loadWxNotifyStatus();
+    loadNotifySettings();
   } catch (e) { alert('解绑失败：' + e.message); }
 }
 
-document.addEventListener('DOMContentLoaded', loadWxNotifyStatus);
+document.addEventListener('DOMContentLoaded', loadNotifySettings);
 
 async function loadEmailStatus() {
   await loadUserInfo();

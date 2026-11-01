@@ -247,9 +247,9 @@
           <div class="search-box">
             <input type="text" id="userSearch" placeholder="搜索学号、姓名、邮箱..." onkeypress="if(event.key==='Enter')searchUsers()">
           <select id="userWxFilter" onchange="searchUsers()" style="padding:10px;border-radius:8px;margin-left:8px;">
-            <option value="">微信：全部</option>
-            <option value="bound">已绑微信</option>
-            <option value="unbound">未绑微信（可定向提醒）</option>
+            <option value="">微信绑定：全部</option>
+            <option value="bound">已绑定微信</option>
+            <option value="unbound">未绑定微信（可定向提醒）</option>
           </select>
             <button class="btn btn-primary" onclick="searchUsers()"><i class="fas fa-search"></i> 搜索</button>
             <button class="btn btn-outline" onclick="loadUsers()"><i class="fas fa-sync-alt"></i> 刷新</button>
@@ -951,15 +951,13 @@
         if (data.success) {
           document.getElementById('usersTable').innerHTML = `
             <table>
-              <thead><tr><th>学号</th><th>姓名</th><th>邮箱</th><th>微信</th><th>会员套餐</th><th>角色</th><th>签到统计</th><th>操作</th></tr></thead>
+              <thead><tr><th>学号</th><th>姓名</th><th>邮箱</th><th>通知渠道</th><th>会员套餐</th><th>角色</th><th>签到统计</th><th>操作</th></tr></thead>
               <tbody>${data.users.map(u => `
                 <tr>
                   <td>${u.studentId}</td>
                   <td>${(u.name && u.name !== u.studentId) ? u.name : '未实名'}</td>
                   <td>${u.email || '-'} ${u.emailVerified ? '✓' : ''}</td>
-                  <td>${u.wxpusherUid
-                    ? '<span class="badge badge-success" title="' + escSponsor(u.wxpusherUid) + '">✅ 已绑</span>'
-                    : '<span style="color:#94a3b8;font-size:12px;">未绑</span>'}</td>
+                  <td>${notifyChannelBadges(u.notify, u)}</td>
                   <td>${u.isVip
                     ? (u.vipExpireAt && new Date(u.vipExpireAt).getTime() <= Date.now()
                         ? `<span class="badge badge-danger">${memberLabel(u)} · 已过期${Math.max(0, Math.floor((Date.now() - new Date(u.vipExpireAt).getTime()) / 86400000)) > 0 ? Math.max(0, Math.floor((Date.now() - new Date(u.vipExpireAt).getTime()) / 86400000)) + '天' : '（今天）'}</span><br><span style="font-size:12px;color:#94a3b8;">到期 ${fmtDate(u.vipExpireAt)}</span>`
@@ -988,6 +986,50 @@
     }
 
     function searchUsers() { loadUsers(1); }
+
+    // 通知渠道徽标：服务端已解析好（u.notify = {channels, level, configured, available}）
+    function notifyChannelBadges(notify, u) {
+      const n = notify || {};
+      const ch = Array.isArray(n.channels) ? n.channels : [];
+      const avail = n.available || {};
+      const levelText = n.level === 'always' ? '成功+失败都通知' : '仅失败时通知';
+      const out = [];
+      if (ch.indexOf('wechat') >= 0 && avail.wechat !== false) {
+        out.push('<span class="badge badge-success" title="微信 · ' + levelText + '">微</span>');
+      }
+      if (ch.indexOf('email') >= 0 && avail.email !== false) {
+        out.push('<span class="badge badge-info" title="邮件 · ' + levelText + '">邮</span>');
+      }
+      if (!out.length) {
+        return (u && u.wxpusherUid)
+          ? '<span class="badge badge-warning" title="已绑微信，但通知全部关闭或渠道不可用">无</span>'
+          : '<span style="color:#94a3b8;font-size:12px;">无</span>';
+      }
+      return out.join(' ');
+    }
+
+    // 通知矩阵预演：只走 dryRun，不真发微信/邮件
+    async function testNotifyMatrix(category) {
+      const p = document.getElementById('notifyTestResult');
+      if (!currentUserId) return;
+      if (p) p.textContent = '预演中…';
+      try {
+        const res = await fetch(`${API_BASE}/admin/wx-test`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUserId, category, dryRun: true })
+        });
+        const d = await res.json();
+        if (d.success && d.matrix) {
+          const to = (d.wouldSend || []).map(x => x.channel === 'wechat' ? '微信' : '邮件').join('、') || '无';
+          if (p) p.textContent = d.matrix.description + '\n将发送：' + to;
+        } else if (p) {
+          p.textContent = d.message || '预演失败';
+        }
+      } catch (e) {
+        if (p) p.textContent = '预演失败：' + e.message;
+      }
+    }
 
     async function loadMarketUsers(page = 1) {
       marketUsersPage = page;
@@ -1086,6 +1128,21 @@
             <div class="form-row">
               <div class="form-group"><label>角色</label><select id="editRole"><option value="user" ${u.role==='user'?'selected':''}>普通用户</option><option value="admin" ${u.role==='admin'?'selected':''}>管理员</option></select></div>
               <div class="form-group"><label>账号状态</label><select id="editActive"><option value="true" ${u.isActive!==false?'selected':''}>启用</option><option value="false" ${u.isActive===false?'selected':''}>禁用</option></select></div>
+            </div>
+            <div class="form-group"><label>通知偏好（用户自选）</label>
+              <div style="font-size:13px;color:#334155;line-height:1.9;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;">
+                <div>渠道：${notifyChannelBadges(u.notify, u)} ${u.notify && u.notify.configured ? '<span style="color:#94a3b8;">（已自定义）</span>' : '<span style="color:#94a3b8;">（默认，未设置）</span>'}</div>
+                <div>时机：${u.notify && u.notify.level === 'always' ? '成功和失败都通知' : '仅失败时通知'}</div>
+              </div>
+            </div>
+            <div class="form-group"><label>通知矩阵预演（POST /api/admin/wx-test，不真发）</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('success')">成功</button>
+                <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('password')">密码错</button>
+                <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('school')">学校异常</button>
+                <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('internal')">内部异常</button>
+              </div>
+              <p id="notifyTestResult" style="font-size:12px;color:#64748b;margin:8px 0 0;white-space:pre-line;"></p>
             </div>
             <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
               <button class="btn btn-primary" onclick="saveUserChanges()"><i class="fas fa-save"></i> 保存修改</button>
