@@ -661,23 +661,81 @@
     let marketItemsPage = 1;
     let marketUsersPage = 1;
 
-    // ===== 会员套餐（与后端 membership.js 保持一致） =====
-    const TIER_LABELS = {
-      FREE: '免费', MONTHLY: '月卡', TERM: '学期卡', YEARLY: '学年卡',
-      YEARLY_PRO: '学年卡 Pro',
-      FRESHMAN: '大一学年卡（启航卡）',
-      SOPHOMORE: '大二学年卡（续航卡）',
-      JUNIOR: '大三学年卡（冲刺卡）',
-      VIP: '学年卡 Pro', SVIP: '长期会员（至毕业）', LEGACY: '元老会员'
-    };
-    const CUSTOM_TIME_TIERS = ['YEARLY_PRO', 'FRESHMAN', 'SOPHOMORE', 'JUNIOR', 'VIP', 'SVIP', 'LEGACY'];
-    function tierLabel(tier) { return TIER_LABELS[tier] || tier || '免费'; }
+    // ===== 会员等级元数据：唯一真相在后端 membership.js，前端不再硬编码 =====
+    // 失败策略：报错 + 禁用相关区域，绝不静默回退硬编码
+    let TIER_META = null;        // { tierLabels, customTimeTiers, legacyTiers, tierOrder }
+    let TIER_META_ERROR = null;
+    let tierMetaPromise = null;
+    const TIER_META_FAIL_TEXT = '等级配置加载失败，请刷新';
+
+    function ensureTierMeta() {
+      if (!tierMetaPromise) tierMetaPromise = loadTierMeta();
+      return tierMetaPromise;
+    }
+
+    async function loadTierMeta() {
+      const res = await fetch(`${API_BASE}/admin/tier-meta`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+      });
+      let data = {};
+      try { data = await res.json(); } catch (e) { data = {}; }
+      if (!res.ok || !data.success) {
+        TIER_META = null;
+        TIER_META_ERROR = data.message || ('HTTP ' + res.status);
+        throw new Error(TIER_META_ERROR);
+      }
+      TIER_META = {
+        tierLabels: data.tierLabels || {},
+        customTimeTiers: Array.isArray(data.customTimeTiers) ? data.customTimeTiers : [],
+        legacyTiers: Array.isArray(data.legacyTiers) ? data.legacyTiers : [],
+        tierOrder: (Array.isArray(data.tierOrder) && data.tierOrder.length) ? data.tierOrder : Object.keys(data.tierLabels || {})
+      };
+      TIER_META_ERROR = null;
+      return TIER_META;
+    }
+
+    function tierMetaErrorBlock(detail) {
+      const reason = detail ? `<div style="color:#991b1b;margin-top:4px;">原因：${String(detail).replace(/</g, '&lt;')}</div>` : '';
+      return `<div style="padding:18px;border:1px solid #fecaca;background:#fef2f2;color:#b42318;border-radius:10px;font-size:13px;line-height:1.8;">
+        <strong>${TIER_META_FAIL_TEXT}</strong>${reason}
+        <div style="margin-top:8px;"><button class="btn btn-outline btn-sm" onclick="location.reload()">刷新页面</button></div>
+      </div>`;
+    }
+
+    function showTierMetaBanner() {
+      if (document.getElementById('tierMetaBanner')) return;
+      const el = document.createElement('div');
+      el.id = 'tierMetaBanner';
+      el.style.cssText = 'position:sticky;top:0;z-index:9999;background:#fef2f2;color:#b42318;border-bottom:1px solid #fecaca;padding:10px 16px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between;';
+      el.innerHTML = `<span><i class="fas fa-triangle-exclamation"></i> ${TIER_META_FAIL_TEXT}（用户列表、套餐、赞助订单、用户详情已停用）</span><button class="btn btn-outline btn-sm" onclick="location.reload()">刷新</button>`;
+      document.body.prepend(el);
+    }
+
+    /** 依赖等级元数据的区域统一入口：未就绪则把该区域置为失败态并返回 false */
+    async function requireTierMeta(containerId) {
+      try { await ensureTierMeta(); } catch (e) { /* 状态已记录，下面统一处理 */ }
+      if (TIER_META) return true;
+      showTierMetaBanner();
+      const el = containerId ? document.getElementById(containerId) : null;
+      if (el) el.innerHTML = tierMetaErrorBlock(TIER_META_ERROR);
+      return false;
+    }
+
+    // 元数据未就绪时返回原始 tier key / '-'，绝不返回 undefined
+    function tierLabel(tier) {
+      if (!TIER_META) return tier || '-';
+      if (!tier) return TIER_META.tierLabels.FREE || '-';
+      return TIER_META.tierLabels[tier] || tier;
+    }
     function memberLabel(u) {
       const span = (u && u.vipExpireAt && u.vipStartAt) ? (new Date(u.vipExpireAt).getTime() - new Date(u.vipStartAt).getTime()) : 0;
       if (span >= 2 * 86400000 && span <= 4 * 86400000) return '3天体验会员';
       return tierLabel(u && u.vipTier);
     }
-    function tierSupportsCustom(tier) { return CUSTOM_TIME_TIERS.includes(tier); }
+    function tierSupportsCustom(tier) {
+      if (!TIER_META) return false;
+      return TIER_META.customTimeTiers.includes(tier);
+    }
     function fmtDate(value) {
       if (!value) return '—';
       const d = new Date(value);
@@ -692,13 +750,14 @@
       return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
     }
     function tierOptions(selected) {
-      const order = ['FREE', 'MONTHLY', 'TERM', 'YEARLY', 'YEARLY_PRO', 'FRESHMAN', 'SOPHOMORE', 'JUNIOR', 'VIP', 'SVIP', 'LEGACY'];
-      return order.map(t => `<option value="${t}" ${t === selected ? 'selected' : ''}>${tierLabel(t)}${['VIP', 'SVIP', 'LEGACY'].includes(t) ? '（历史等级）' : ''}</option>`).join('');
+      if (!TIER_META) return `<option value="">${TIER_META_FAIL_TEXT}</option>`;
+      return TIER_META.tierOrder.map(t => `<option value="${t}" ${t === selected ? 'selected' : ''}>${tierLabel(t)}${TIER_META.legacyTiers.includes(t) ? '（历史等级）' : ''}</option>`).join('');
     }
     function updateTierHint() {
       const el = document.getElementById('editTierHint');
-      const tier = (document.getElementById('editVipTier') || {}).value || 'FREE';
       if (!el) return;
+      if (!TIER_META) { el.textContent = TIER_META_FAIL_TEXT; return; }
+      const tier = (document.getElementById('editVipTier') || {}).value || 'FREE';
       el.textContent = tierSupportsCustom(tier)
         ? '该套餐支持自定义时间：可手动调整开始时间和到期时间，用户可自定义签到时间。'
         : '该套餐不支持自定义时间：用户签到时间固定 21:35；管理员仍可在此手动调整日期。';
@@ -860,6 +919,7 @@
     // ========== 用户管理 ==========
     async function loadUsers(page = 1) {
       currentPage = page;
+      if (!(await requireTierMeta('usersTable'))) return;
       const search = document.getElementById('userSearch')?.value || '';
       try {
           const res = await fetch(`${API_BASE}/admin/users?page=${page}&limit=20&scope=attendance&search=${encodeURIComponent(search)}`, {
@@ -972,6 +1032,10 @@
 
     async function viewUser(userId) {
       currentUserId = userId;
+      if (!(await requireTierMeta('userDetailContent'))) {
+        document.getElementById('userDetailModal').classList.add('show');
+        return;
+      }
       try {
         const res = await fetch(`${API_BASE}/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
@@ -1112,6 +1176,7 @@
     async function loadAdminPackages() {
       const box = document.getElementById('adminPackagesTable');
       if (!box) return;
+      if (!(await requireTierMeta('adminPackagesTable'))) return;
       try {
         const res = await fetch(`${API_BASE}/admin/sponsor-packages`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
@@ -1241,6 +1306,7 @@
     async function loadSponsorOrders() {
       const box = document.getElementById('sponsorOrdersTable');
       if (!box) return;
+      if (!(await requireTierMeta('sponsorOrdersTable'))) return;
       const status = (document.getElementById('sponsorOrderStatus') || {}).value || '';
       const reviewStatus = (document.getElementById('sponsorReviewStatus') || {}).value || '';
       const params = new URLSearchParams();
@@ -2015,10 +2081,14 @@
     }
     initRealtimeFeedback();
 
-    checkAdmin();
-    loadDashboardStats();
-    loadReportBadge();
-    loadAlertChannels();
+    // 等级元数据必须先于任何依赖它的渲染（用户列表 / 套餐管理 / 赞助订单 / 用户详情）
+    (async function boot() {
+      try { await ensureTierMeta(); } catch (e) { showTierMetaBanner(); }
+      checkAdmin();
+      loadDashboardStats();
+      loadReportBadge();
+      loadAlertChannels();
+    })();
   </script>
 </body>
 </html>
