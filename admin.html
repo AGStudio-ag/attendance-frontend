@@ -187,6 +187,9 @@
         <div class="menu-item" data-page="email">
           <i class="fas fa-envelope"></i> 群发邮件
         </div>
+        <div class="menu-item" data-page="sign-mgmt">
+          <i class="fas fa-clipboard-check"></i> 签到管理
+        </div>
         <div class="menu-item" data-page="settings">
           <i class="fas fa-cog"></i> 系统设置
         </div>
@@ -449,6 +452,25 @@
         </div>
       </div>
 
+      <!-- ===== 签到管理 ===== -->
+      <div id="page-sign-mgmt" class="hidden">
+        <div class="content-card">
+          <div class="card-header">
+            <h3><i class="fas fa-clipboard-check"></i> 今日自动签到覆盖</h3>
+            <button class="btn btn-primary" onclick="loadSignReport()"><i class="fas fa-sync"></i> 刷新</button>
+          </div>
+          <div id="signReportBox" style="color:#888;">点击"刷新"查看今日签到名单</div>
+        </div>
+        <div class="content-card">
+          <div class="card-header"><h3><i class="fas fa-envelope-open-text"></i> 邮件工具</h3></div>
+          <p style="color:#666;font-size:13px;margin:0 0 12px;">管理员汇总每天 23:59 自动发送（已发则跳过）；续费提醒每天 10:00 自动检查（到期前 7 天 / 1 天，仅发送给已绑定邮箱的会员）。以下按钮可手动触发。</p>
+          <button class="btn btn-primary" onclick="sendTodaySummary()" id="btnSendSummary"><i class="fas fa-paper-plane"></i> 立即发送今日汇总邮件</button>
+          <button class="btn" style="margin-left:8px;background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="runRenewalCheck()" id="btnRenewalCheck"><i class="fas fa-bell"></i> 立即检查续费提醒</button>
+          <button class="btn" style="margin-left:8px;background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="runRetryMissing()" id="btnRetryMissing"><i class="fas fa-redo"></i> 立即补签未成功用户</button>
+          <span id="mailToolResult" style="margin-left:12px;color:#666;"></span>
+        </div>
+      </div>
+
       <!-- ===== 系统设置 ===== -->
       <div id="page-settings" class="hidden">
         <div class="content-card">
@@ -470,6 +492,32 @@
           <div class="card-header"><h3><i class="fas fa-gift"></i> 邀请奖励设置</h3></div>
           <div class="form-group"><label>每人奖励会员天数</label><input type="number" id="inviteRewardDays" value="10" min="1" max="365"></div>
           <button class="btn btn-primary" onclick="saveInviteReward()"><i class="fas fa-save"></i> 保存奖励设置</button>
+        </div>
+
+        <div class="content-card">
+          <div class="card-header"><h3><i class="fas fa-bell"></i> 手机实时提醒（WxPusher）</h3></div>
+          <p style="color:#666;font-size:13px;margin:0 0 12px;">签到汇总、签到失败、补签结果、新留言都会<b>同时</b>发邮件到管理员邮箱，并推送到你的手机。填入 WxPusher 的 SPT 令牌后代保存，再点"发送测试提醒"就能验证。</p>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:#173b36;">
+              <input type="checkbox" id="wxpusherEnabled" style="width:16px;height:16px;"> 启用手机推送
+            </label>
+            <span id="wxpusherStatus" style="font-size:12px;color:#94a3b8;"></span>
+          </div>
+          <div class="form-group"><label>SPT 令牌（推荐，最省事）</label><input type="text" id="wxpusherSpt" placeholder="SPT_xxxxxxxx（留空=不修改）"></div>
+          <details style="margin:0 0 12px;color:#64748b;font-size:13px;">
+            <summary style="cursor:pointer;">进阶：用 appToken + UID 推送（可选）</summary>
+            <div class="form-row" style="margin-top:8px;">
+              <div class="form-group"><label>appToken</label><input type="text" id="wxpusherAppToken" placeholder="AT_xxxxxxxx"></div>
+              <div class="form-group"><label>UID / Topic ID（逗号分隔）</label><input type="text" id="wxpusherUids" placeholder="UID_xxx 或数字 Topic ID"></div>
+            </div>
+          </details>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary" onclick="saveAlertChannels()"><i class="fas fa-save"></i> 保存提醒设置</button>
+            <button class="btn" style="background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="testAlertChannels()"><i class="fas fa-paper-plane"></i> 发送测试提醒</button>
+            <button class="btn" style="background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="enableBrowserNotify()"><i class="fas fa-desktop"></i> 开启浏览器通知</button>
+            <span id="alertSaveResult" style="color:#666;font-size:13px;"></span>
+          </div>
+          <div id="alertTestResult" style="margin-top:10px;font-size:13px;line-height:1.9;"></div>
         </div>
 
         <!-- ===== 🆕 赞助者专属通知卡片 ===== -->
@@ -598,6 +646,7 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
     const API_BASE = 'https://api.agai.online/api';
     const token = localStorage.getItem('token');
@@ -622,6 +671,11 @@
     };
     const CUSTOM_TIME_TIERS = ['YEARLY_PRO', 'FRESHMAN', 'SOPHOMORE', 'JUNIOR', 'VIP', 'SVIP', 'LEGACY'];
     function tierLabel(tier) { return TIER_LABELS[tier] || tier || '免费'; }
+    function memberLabel(u) {
+      const span = (u && u.vipExpireAt && u.vipStartAt) ? (new Date(u.vipExpireAt).getTime() - new Date(u.vipStartAt).getTime()) : 0;
+      if (span >= 2 * 86400000 && span <= 4 * 86400000) return '3天体验会员';
+      return tierLabel(u && u.vipTier);
+    }
     function tierSupportsCustom(tier) { return CUSTOM_TIME_TIERS.includes(tier); }
     function fmtDate(value) {
       if (!value) return '—';
@@ -685,7 +739,7 @@
         const titles = {
           dashboard: '仪表盘', users: '考勤用户管理', 'market-users': '交易平台用户管理', cards: '卡密管理',
           reports: '举报管理', orders: '订单管理', 'sponsor-orders': '赞助订单', packages: '套餐管理', 'market-items': '商品管理',
-          feedback: '留言管理', email: '群发邮件', settings: '系统设置'
+          feedback: '留言管理', email: '群发邮件', 'sign-mgmt': '签到管理', settings: '系统设置'
         };
         document.getElementById('pageTitle').textContent = titles[page];
 
@@ -700,9 +754,57 @@
         else if (page === 'market-items') loadMarketItems();
         else if (page === 'feedback') loadFeedbacks();
         else if (page === 'email') loadEmailStats();
+        else if (page === 'sign-mgmt') loadSignReport();
         else if (page === 'settings') { loadSettings(); loadSponsorNotice(); }
       });
     });
+
+    // ========== 签到管理 ==========
+    async function loadSignReport() {
+      const box = document.getElementById('signReportBox');
+      box.innerHTML = '加载中...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/autosign-report`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!data.success) { box.innerHTML = '<span style="color:#dc3545;">加载失败：' + (data.message || '') + '</span>'; return; }
+        let html = `<p style="margin:0 0 10px;color:#334155;">自动签到用户 <strong>${data.total}</strong> 人，今日已签 <strong style="color:#166534;">${data.signed}</strong> 人，未签 <strong style="color:#b42318;">${data.missing.length}</strong> 人</p>`;
+        if (!data.missing.length) {
+          html += '<p style="color:#166534;margin:0;">✅ 全部已签到</p>';
+        } else {
+          html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="color:#64748b;text-align:left;"><th style="padding:6px;border-bottom:1px solid #e2e8f0;">学号</th><th style="padding:6px;border-bottom:1px solid #e2e8f0;">姓名</th><th style="padding:6px;border-bottom:1px solid #e2e8f0;">会员</th><th style="padding:6px;border-bottom:1px solid #e2e8f0;">到期时间</th></tr></thead><tbody>';
+          for (const m of data.missing) {
+            const exp = m.vipExpireAt ? new Date(m.vipExpireAt).toLocaleString('zh-CN') : '长期';
+            html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${m.studentId}</td><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${m.name || '-'}</td><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${m.vipTier || '-'}</td><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${exp}</td></tr>`;
+          }
+          html += '</tbody></table>';
+        }
+        box.innerHTML = html;
+      } catch (e) { box.innerHTML = '<span style="color:#dc3545;">加载异常：' + e.message + '</span>'; }
+    }
+
+    async function sendTodaySummary() {
+      const btn = document.getElementById('btnSendSummary'); const out = document.getElementById('mailToolResult');
+      btn.disabled = true; out.textContent = '发送中...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/send-summary`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        out.textContent = data.success ? '✅ 今日汇总邮件已发送，请查收邮箱' : '❌ ' + (data.message || '发送失败');
+      } catch (e) { out.textContent = '❌ ' + e.message; }
+      btn.disabled = false;
+    }
+
+    async function runRenewalCheck() {
+      const btn = document.getElementById('btnRenewalCheck'); const out = document.getElementById('mailToolResult');
+      btn.disabled = true; out.textContent = '检查中...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/check-renewal`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!data.success) { out.textContent = '❌ ' + (data.message || '检查失败'); }
+        else if (!data.sent) { out.textContent = `检查完成：本次无到期提醒可发（已发 ${data.sent} 封 / 失败 ${data.failed} 封）`; }
+        else { out.textContent = `✅ 已发送 ${data.sent} 封续费提醒` + (data.details || []).map(d => `（${d.studentId} ${d.days}天）`).join(''); }
+      } catch (e) { out.textContent = '❌ ' + e.message; }
+      btn.disabled = false;
+    }
 
     // ========== 仪表盘 ==========
     async function loadDashboardStats() {
@@ -773,7 +875,9 @@
                   <td>${(u.name && u.name !== u.studentId) ? u.name : '未实名'}</td>
                   <td>${u.email || '-'} ${u.emailVerified ? '✓' : ''}</td>
                   <td>${u.isVip
-                    ? `<span class="badge badge-success">${tierLabel(u.vipTier)}</span><br><span style="font-size:12px;color:#94a3b8;">${fmtDate(u.vipExpireAt)}${tierSupportsCustom(u.vipTier) ? ' · 可自定义' : ''}</span>`
+                    ? (u.vipExpireAt && new Date(u.vipExpireAt).getTime() <= Date.now()
+                        ? `<span class="badge badge-danger">${memberLabel(u)} · 已过期${Math.max(0, Math.floor((Date.now() - new Date(u.vipExpireAt).getTime()) / 86400000)) > 0 ? Math.max(0, Math.floor((Date.now() - new Date(u.vipExpireAt).getTime()) / 86400000)) + '天' : '（今天）'}</span><br><span style="font-size:12px;color:#94a3b8;">到期 ${fmtDate(u.vipExpireAt)}</span>`
+                        : `<span class="badge badge-success">${memberLabel(u)}</span><br><span style="font-size:12px;color:#94a3b8;">${fmtDate(u.vipExpireAt)}${tierSupportsCustom(u.vipTier) ? ' · 可自定义' : ''}</span>`)
                     : '<span class="badge badge-danger">普通</span>'}</td>
                   <td>${u.role === 'admin' ? '<span class="badge badge-admin">管理员</span>' : '<span class="badge badge-info">用户</span>'}</td>
                   <td>${u.successSignCount || 0}/${u.totalSignCount || 0}</td>
@@ -1537,6 +1641,7 @@
             document.getElementById('noticeStyle').value = notice.style || 'info';
           }
           if (data.configs.invite_reward_days) document.getElementById('inviteRewardDays').value = data.configs.invite_reward_days;
+          loadAlertChannels();
         }
       } catch (e) {}
     }
@@ -1746,9 +1851,117 @@
     document.getElementById('pkgModal').addEventListener('click', function(e) { if (e.target === this) closePkgModal(); });
 
     // ========== 初始化 ==========
+    // ========== 补签 / 实时提醒 ==========
+    async function runRetryMissing() {
+      const btn = document.getElementById('btnRetryMissing');
+      const out = document.getElementById('mailToolResult');
+      if (btn) btn.disabled = true;
+      if (out) out.textContent = '补签中（逐个重试未签到成员，可能需要 1-2 分钟）...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/retry-missing`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!data.success) { if (out) out.textContent = '❌ ' + (data.message || '失败'); }
+        else if (data.skipped) { if (out) out.textContent = '未执行：' + data.skipped; }
+        else {
+          let msg = `检查 ${data.checked} 人，补回 ${data.recovered} 人，仍失败 ${data.failed} 人`;
+          if (data.passwordIssues && data.passwordIssues.length) msg += `（密码问题：${data.passwordIssues.join(', ')}）`;
+          if (out) out.textContent = msg;
+          showToast('补签完成：' + msg, data.failed ? 'warning' : 'success');
+        }
+      } catch (e) { if (out) out.textContent = '❌ ' + e.message; }
+      if (btn) btn.disabled = false;
+    }
+
+    function escapeAttr(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    async function loadAlertChannels() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/alert-channels`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        if (!data.success) return;
+        const ch = data.channels || {};
+        const en = document.getElementById('wxpusherEnabled'); if (en) en.checked = ch.enabled !== false;
+        const spt = document.getElementById('wxpusherSpt'); if (spt) spt.value = ch.spt || '';
+        const at = document.getElementById('wxpusherAppToken'); if (at) at.value = ch.appToken || '';
+        const uids = document.getElementById('wxpusherUids'); if (uids) uids.value = [ch.uids, ch.topicIds].filter(Boolean).join(',');
+        const st = document.getElementById('wxpusherStatus');
+        if (st) st.textContent = ch.configured ? '✅ 已配置' : '未配置（填 SPT 后生效）';
+        const hint = document.getElementById('alertSaveResult');
+        if (hint && data.email) hint.textContent = `邮件通道：${data.email.to}${data.email.enabled ? '' : '（未配置）'}`;
+      } catch (e) {}
+    }
+    async function saveAlertChannels() {
+      const channels = {
+        enabled: !!(document.getElementById('wxpusherEnabled') || {}).checked,
+        spt: ((document.getElementById('wxpusherSpt') || {}).value || '').trim(),
+        appToken: ((document.getElementById('wxpusherAppToken') || {}).value || '').trim(),
+        uids: ((document.getElementById('wxpusherUids') || {}).value || '').trim()
+      };
+      const out = document.getElementById('alertSaveResult');
+      try {
+        const res = await fetch(`${API_BASE}/admin/alert-channels`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channels })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (out) out.textContent = '✅ 已保存，实时提醒已生效';
+          showToast('提醒设置已保存', 'success');
+          loadAlertChannels();
+        } else {
+          if (out) out.textContent = '❌ ' + (data.message || '保存失败');
+          showToast('保存失败', 'error');
+        }
+      } catch (e) { showToast('保存失败：' + e.message, 'error'); }
+    }
+    async function testAlertChannels() {
+      const out = document.getElementById('alertTestResult');
+      if (out) out.innerHTML = '<span style="color:#94a3b8;">⏳ 正在发送测试消息…</span>';
+      try {
+        const res = await fetch(`${API_BASE}/admin/alert-test`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (!data.success) { if (out) out.innerHTML = '❌ ' + escapeAttr(data.message || '发送失败'); return; }
+        const push = data.push || null;
+        const pushLine = push ? `${push.ok ? '✅' : '❌'} 手机推送（WxPusher）${push.ok ? '' : '：' + escapeAttr(push.message || '失败')}` : '<span style="color:#94a3b8;">手机推送未启用</span>';
+        if (out) out.innerHTML = `<div>📧 邮件：${data.email === null ? '未配置' : (data.email ? '已发送' : '发送失败')}</div><div>${pushLine}</div>`;
+      } catch (e) { if (out) out.innerHTML = '❌ ' + escapeAttr(e.message); }
+    }
+
+    function enableBrowserNotify() {
+      if (!window.Notification) { showToast('当前浏览器不支持通知', 'warning'); return; }
+      Notification.requestPermission().then(p => showToast(p === 'granted' ? '浏览器通知已开启' : '未开启通知', p === 'granted' ? 'success' : 'warning'));
+    }
+
+    async function initRealtimeFeedback() {
+      try {
+        if (typeof io !== 'function') return;
+        const res = await fetch(`${API_BASE}/user/profile`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        const myId = data && data.user && data.user.id;
+        if (!myId) return;
+        const socket = io('https://api.agai.online', { transports: ['websocket', 'polling'] });
+        socket.on('connect', () => socket.emit('bindUser', String(myId)));
+        socket.on('feedback:new', (d) => {
+          showToast('📩 新留言：' + ((d && d.title) || ''), 'warning');
+          if (window.Notification && Notification.permission === 'granted') {
+            try { new Notification('管理后台：收到新留言', { body: ((d && d.studentId) || '') + ' · ' + ((d && d.title) || '') }); } catch (e) {}
+          }
+          if (typeof loadReportBadge === 'function') loadReportBadge();
+        });
+      } catch (e) { console.warn('实时提醒初始化失败', e); }
+    }
+    initRealtimeFeedback();
+
     checkAdmin();
     loadDashboardStats();
     loadReportBadge();
+    loadAlertChannels();
   </script>
 </body>
 </html>
