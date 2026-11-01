@@ -699,16 +699,6 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
     </header>
 
     <div class="content">
-      <!-- 全局邮箱绑定提示（推广绑定邮箱） -->
-      <div id="globalEmailBanner" class="alert alert-warning" style="display:none;margin-bottom:14px;align-items:flex-start;gap:10px;">
-        <svg class="ico" style="color:var(--amber);flex:none;margin-top:2px;"><use href="#i-mail"/></svg>
-        <div style="flex:1;min-width:0;">
-          <strong>还没绑定邮箱</strong>
-          <p style="margin:2px 0 0;">绑定邮箱后可以收到每次签到结果通知和会员到期提醒；不绑定将收不到任何邮件通知（后续可能限制未绑定用户使用部分功能）。</p>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="goPage('email')" style="flex:none;">立即绑定</button>
-        <button class="btn btn-ghost btn-sm" onclick="dismissEmailBanner()" title="今天不再提示" style="flex:none;">×</button>
-      </div>
       <!-- 公告区（置顶） -->
       <div id="noticeCard" class="card hidden" style="margin-bottom:14px;border-left:4px solid var(--blue);">
         <h2 class="card-heading" id="noticeTitle"></h2>
@@ -982,6 +972,11 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
         </div>
 
         <div class="card">
+          <h2 class="card-heading"><svg class="ico" style="color:var(--blue);"><use href="#i-user"/></svg> 账号与通知</h2>
+          <div id="profileAccountBox"><p class="loading">加载中…</p></div>
+        </div>
+
+        <div class="card">
           <h2 class="card-heading"><svg class="ico" style="color:var(--blue);"><use href="#i-user-edit"/></svg> 个人信息</h2>
           <div class="field"><label>学号</label><input type="text" id="profileStudentId" disabled></div>
           <div class="field"><label>姓名</label><input type="text" id="profileName" placeholder="请输入姓名"></div>
@@ -1096,6 +1091,20 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
 
         <div class="card">
           <h2 class="card-heading"><svg class="ico" style="color:var(--green);"><use href="#i-pen"/></svg> 提交反馈</h2>
+
+          <!-- 反馈渠道提示：站内留言 + 微信上行消息 + QQ 群（不单独做卡片，避免冗余） -->
+          <div id="feedbackHelp" style="background:var(--surface-hover);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:18px;overflow-wrap:anywhere;">
+            <p style="font-size:14px;font-weight:600;margin:0 0 6px;">💡 遇到问题需要反馈？</p>
+            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 10px;line-height:1.8;">可以直接在下方留言，或者：</p>
+            <div style="font-size:13px;line-height:1.9;color:var(--text-secondary);">
+              <p style="margin:0 0 6px;">📱 <strong style="color:var(--text-primary);">微信直达</strong>：在微信公众号内发送
+                <code style="font-family:var(--mono);font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 4px;white-space:nowrap;">#145060 你的问题</code>，管理员会实时收到。
+              </p>
+              <p style="margin:0;">👥 <strong style="color:var(--text-primary);">QQ 群求助</strong>：扫描下方二维码加入官方交流群，获取人工帮助。</p>
+              <img src="./qq_group_qr.png" alt="QQ 群二维码" loading="lazy" style="display:block;width:100%;max-width:150px;height:auto;margin-top:10px;border-radius:10px;border:1px solid var(--border);">
+            </div>
+          </div>
+
           <div class="field">
             <label>类型</label>
             <select id="feedbackType">
@@ -1842,7 +1851,6 @@ function renderEmailWarning() {
       <div><strong>未绑定邮箱</strong><p>绑定后签到状态和会员到期提醒都会通过邮件通知。 <button class="btn btn-ghost btn-sm" style="text-decoration:underline;height:auto;padding:0;color:var(--amber);font-weight:600;" onclick="goPage('email')">去绑定</button></p></div>
     </div>`;
   }
-  renderEmailBanner();
   renderSponsorCard();
   renderCheckinCard();
 }
@@ -1902,20 +1910,6 @@ function renderSponsorCard() {
     desc.textContent = '会员每天 21:35 自动签到，可自定义签到时间，有效期至毕业。';
     btn.textContent = '去开通';
   }
-}
-
-function renderEmailBanner() {
-  const el = document.getElementById('globalEmailBanner');
-  if (!el) return;
-  const dismissed = localStorage.getItem('emailBannerDismissed') === new Date().toDateString();
-  const needBind = currentUser && !currentUser.emailVerified;
-  el.style.display = needBind && !dismissed ? 'flex' : 'none';
-}
-
-function dismissEmailBanner() {
-  localStorage.setItem('emailBannerDismissed', new Date().toDateString());
-  const el = document.getElementById('globalEmailBanner');
-  if (el) el.style.display = 'none';
 }
 
 async function loadAutoSignSetting() {
@@ -2074,8 +2068,9 @@ async function pollWxBind() {
     const d = await api('/user/wxpusher/status');
     if (d.bound) {
       closeWxQr();
-      alert('✅ 微信绑定成功，记得在上方打开「微信」开关并保存');
+      alert('✅ 微信绑定成功，之后签到结果会按你的通知偏好推送');
       loadNotifySettings();
+      if (document.getElementById('profileAccountBox')) loadProfileAccount();
       return;
     }
     if (d.expired) {
@@ -2102,6 +2097,7 @@ async function unbindWx() {
   try {
     await api('/user/wxpusher/unbind', { method: 'POST' });
     loadNotifySettings();
+    if (document.getElementById('profileAccountBox')) loadProfileAccount();
   } catch (e) { alert('解绑失败：' + e.message); }
 }
 
@@ -2245,6 +2241,82 @@ async function loadProfile() {
 
   const inviteEl = document.getElementById('memberInvite');
   if (inviteEl) inviteEl.textContent = currentUser.inviteCode || '--';
+
+  loadProfileAccount();
+}
+
+// 「我的」页信息聚合：微信/邮箱/通知偏好 + 账号数据，一处查看和修改
+async function loadProfileAccount() {
+  const box = document.getElementById('profileAccountBox');
+  if (!box) return;
+  box.innerHTML = '<p class="loading">加载中…</p>';
+  let wx = null, notify = null;
+  try {
+    const results = await Promise.all([
+      api('/user/wxpusher/status').catch(e => ({ success: false, message: e.message })),
+      api('/user/notify-settings').catch(e => ({ success: false, message: e.message }))
+    ]);
+    wx = results[0];
+    notify = results[1];
+  } catch (e) { /* 下面按缺省渲染 */ }
+  renderProfileAccount(wx, notify);
+}
+
+function profileRow(label, value, actionHtml) {
+  return '<div class="setting-row" style="gap:12px;align-items:flex-start;">' +
+    '<div class="setting-copy" style="min-width:0;">' +
+      '<strong>' + label + '</strong>' +
+      '<p style="overflow-wrap:anywhere;">' + value + '</p>' +
+    '</div>' +
+    (actionHtml ? '<div style="flex:none;">' + actionHtml + '</div>' : '') +
+  '</div>';
+}
+
+function profileStat(label, value) {
+  return '<div><div style="font-size:12px;color:var(--text-tertiary);">' + label + '</div>' +
+    '<div style="font-weight:600;margin-top:2px;">' + value + '</div></div>';
+}
+
+function renderProfileAccount(wx, notify) {
+  const box = document.getElementById('profileAccountBox');
+  if (!box) return;
+  wx = wx || {};
+  notify = notify || {};
+  const s = notify.settings || {};
+  const ch = Array.isArray(s.channels) ? s.channels : [];
+  const avail = notify.available || {};
+  const channels = [];
+  if (ch.indexOf('wechat') >= 0 && avail.wechat !== false) channels.push('微信');
+  if (ch.indexOf('email') >= 0 && avail.email !== false) channels.push('邮件');
+  const levelText = s.level === 'always' ? '成功和失败都通知' : '仅失败时通知';
+  const notifyText = channels.length ? channels.join(' + ') + ' · ' + levelText : '未开启（签到结果不推送）';
+
+  const wxValue = wx.bound
+    ? '✅ 已绑定' + (wx.bindTime ? ' · ' + new Date(wx.bindTime).toLocaleDateString('zh-CN') : '')
+    : '未绑定，扫码关注后可用（免费、即时）';
+  const wxAction = wx.bound
+    ? '<button class="btn btn-outline btn-sm" onclick="unbindWx()">解除绑定</button>'
+    : '<button class="btn btn-primary btn-sm" onclick="startWxBind()">绑定微信</button>';
+
+  const mailValue = currentUser.emailVerified
+    ? escapeHTML(currentUser.email || '') + ' · 已验证'
+    : (currentUser.email ? escapeHTML(currentUser.email) + ' · 未验证' : '未绑定邮箱');
+  const mailAction = '<button class="btn btn-outline btn-sm" onclick="goPage(\'email\')">' +
+    (currentUser.emailVerified ? '换绑' : '去绑定') + '</button>';
+
+  const created = currentUser.createdAt ? new Date(currentUser.createdAt).toLocaleDateString('zh-CN') : '--';
+  const stats = (Number(currentUser.successSignCount) || 0) + ' 成功 / ' + (Number(currentUser.totalSignCount) || 0) + ' 次';
+
+  box.innerHTML =
+    profileRow('微信', wxValue, wxAction) +
+    profileRow('邮箱', mailValue, mailAction) +
+    profileRow('通知偏好', notifyText, '<button class="btn btn-outline btn-sm" onclick="goPage(\'subscriptions\')">修改</button>') +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);font-size:13px;">' +
+      profileStat('注册时间', created) +
+      profileStat('累计签到', stats) +
+      profileStat('连续打卡', (Number(currentUser.checkinStreak) || 0) + ' 天') +
+      profileStat('邀请人数', (Number(currentUser.inviteCount) || 0) + ' 人') +
+    '</div>';
 }
 
 async function updateProfile() {
@@ -2722,7 +2794,6 @@ function goToSponsor() {
 function init() {
   bindWeekdayButtons();
   loadUserInfo(); loadStats(); loadActiveSubs(); loadNotice();
-  renderEmailBanner();
   renderSponsorCard();
   renderCheckinCard();
   setTimeout(loadVipNotice, 500);
