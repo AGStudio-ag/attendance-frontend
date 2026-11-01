@@ -1889,7 +1889,10 @@
           return;
         }
         const rows = data.feedbacks.map(f => {
-          const who = f.studentId ? `学号 ${escSponsor(f.studentId)}` : `UID ${escSponsor(String(f.uid || '').slice(0, 10))}…`;
+          const shortUid = String(f.uid || '').slice(0, 12);
+          const who = f.studentId
+            ? `学号 ${escSponsor(f.studentId)}`
+            : (/^UID_/i.test(shortUid) ? `${escSponsor(shortUid)}…` : `UID ${escSponsor(shortUid)}…`);
           const status = f.replied
             ? '<span class="badge badge-success">已回复</span>'
             : (f.autoReplied ? '<span class="badge badge-info">已自动回复</span>' : '<span class="badge badge-warning">待回复</span>');
