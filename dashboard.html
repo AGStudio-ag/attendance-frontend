@@ -910,6 +910,25 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
         </div>
       </div>
 
+      <!-- ================= 微信通知（WxPusher 服务号）================= -->
+      <div class="card" style="margin-top:16px;">
+        <h2 class="card-heading"><svg class="ico" style="color:var(--blue);"><use href="#i-calendar"/></svg> 微信通知</h2>
+        <p style="font-size:13px;color:var(--text-secondary);margin:0 0 14px;">
+          绑定后每天自动签到的结果会直接发到微信（关注 WxPusher 服务号即可，不用安装 App）。
+        </p>
+        <div id="wxNotifyBox">加载中…</div>
+      </div>
+
+      <div id="wxQrModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:16px;padding:22px;max-width:340px;width:92%;text-align:center;">
+          <h3 style="margin:0 0 10px;font-size:16px;">微信扫码绑定</h3>
+          <p style="margin:0 0 12px;font-size:13px;color:#64748b;">请使用微信扫一扫，关注后即可接收通知</p>
+          <div id="wxQrImgBox" style="min-height:220px;display:flex;align-items:center;justify-content:center;"></div>
+          <p id="wxQrTip" style="margin:12px 0 0;font-size:12px;color:#94a3b8;">正在生成二维码…</p>
+          <button class="btn btn-outline" style="margin-top:14px;width:100%;" onclick="closeWxQr()">关闭</button>
+        </div>
+      </div>
+
       <!-- ================= 邮箱 ================= -->
       <div id="page-email" class="page">
         <h1 class="page-title">邮箱</h1>
@@ -1998,6 +2017,91 @@ async function saveAutoSignSetting() {
 /* ============================================================
    Email
    ============================================================ */
+// ===== 微信通知绑定（WxPusher 服务号，扫码即绑，无需安装 App）=====
+let wxPollTimer = null;
+
+async function loadWxNotifyStatus() {
+  const box = document.getElementById('wxNotifyBox');
+  if (!box) return;
+  try {
+    const res = await api('/user/wxpusher/status');
+    const d = await res.json();
+    if (!d.success) { box.innerHTML = '<p class="empty">' + (d.message || '状态读取失败') + '</p>'; return; }
+    if (d.bound) {
+      const t = d.bindTime ? new Date(d.bindTime).toLocaleString('zh-CN') : '';
+      box.innerHTML = '<div class="setting-row" style="justify-content:flex-start;gap:12px;">' +
+        '<div class="setting-copy"><strong>✅ 已绑定微信，每日将接收签到结果</strong><p>' + (t ? '绑定时间：' + t : '') + '</p></div>' +
+        '<button class="btn btn-outline btn-sm" onclick="unbindWx()">解除绑定</button></div>';
+    } else {
+      box.innerHTML = '<div class="setting-row" style="justify-content:flex-start;gap:12px;">' +
+        '<div class="setting-copy"><strong>接收微信通知</strong><p>每天自动签到的成功/失败结果，直接发到微信。</p></div>' +
+        '<button class="btn btn-primary btn-sm" onclick="startWxBind()">绑定微信</button></div>';
+    }
+  } catch (e) {
+    box.innerHTML = '<p class="empty">状态读取失败</p>';
+  }
+}
+
+async function startWxBind() {
+  const modal = document.getElementById('wxQrModal');
+  const imgBox = document.getElementById('wxQrImgBox');
+  const tip = document.getElementById('wxQrTip');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  imgBox.innerHTML = '';
+  tip.textContent = '正在生成二维码…';
+  try {
+    const res = await api('/user/wxpusher/qrcode');
+    const d = await res.json();
+    if (!d.success) { tip.textContent = d.message || '二维码生成失败'; return; }
+    imgBox.innerHTML = '<img src="' + d.url + '" alt="微信绑定二维码" style="width:220px;height:220px;border-radius:10px;" />';
+    tip.textContent = '请使用微信扫一扫，关注后即可接收通知（二维码 10 分钟内有效）';
+    if (wxPollTimer) clearInterval(wxPollTimer);
+    wxPollTimer = setInterval(pollWxBind, 2000);
+  } catch (e) {
+    tip.textContent = '二维码生成失败：' + e.message;
+  }
+}
+
+async function pollWxBind() {
+  try {
+    const res = await api('/user/wxpusher/status');
+    const d = await res.json();
+    if (d.bound) {
+      closeWxQr();
+      alert('✅ 微信绑定成功，之后每天会自动收到签到结果');
+      loadWxNotifyStatus();
+      return;
+    }
+    if (d.expired) {
+      const tip = document.getElementById('wxQrTip');
+      if (tip) tip.textContent = d.message || '二维码已过期，请关闭后重新获取';
+      if (wxPollTimer) { clearInterval(wxPollTimer); wxPollTimer = null; }
+      return;
+    }
+    if (d.message && d.waiting) {
+      const tip = document.getElementById('wxQrTip');
+      if (tip) tip.textContent = '请使用微信扫一扫，关注后即可接收通知…' + (String(d.message).includes('其他用户') ? '（' + d.message + '）' : '');
+    }
+  } catch (e) { /* 轮询失败静默，下一次继续 */ }
+}
+
+function closeWxQr() {
+  const modal = document.getElementById('wxQrModal');
+  if (modal) modal.style.display = 'none';
+  if (wxPollTimer) { clearInterval(wxPollTimer); wxPollTimer = null; }
+}
+
+async function unbindWx() {
+  if (!confirm('确定解除微信绑定？解除后将不再收到微信通知。')) return;
+  try {
+    await api('/user/wxpusher/unbind', { method: 'POST' });
+    loadWxNotifyStatus();
+  } catch (e) { alert('解绑失败：' + e.message); }
+}
+
+document.addEventListener('DOMContentLoaded', loadWxNotifyStatus);
+
 async function loadEmailStatus() {
   await loadUserInfo();
   const container = document.getElementById('emailStatus');
