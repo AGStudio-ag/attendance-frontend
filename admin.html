@@ -417,10 +417,31 @@
           </div>
         </div>
         <div class="content-card">
-          <div class="card-header"><h3><i class="fas fa-comments"></i> 留言列表</h3></div>
+          <div class="card-header">
+            <h3><i class="fas fa-comments"></i> 留言列表</h3>
+          </div>
           <div id="feedbackStats" style="margin-bottom:20px;"></div>
           <div id="feedbacksTable">加载中...</div>
           <div class="pagination" id="feedbackPagination"></div>
+        </div>
+
+        <div class="content-card">
+          <div class="card-header">
+            <h3><i class="fas fa-weixin" style="color:#22c55e;"></i> 微信用户消息 <span class="badge badge-warning" id="userFeedbackPending">0</span></h3>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+                <input type="checkbox" id="autoReplyEnabled" onchange="saveAutoReplyToggle()"> 延迟自动回复
+              </label>
+              <button class="btn btn-outline btn-sm" onclick="editAutoReplyTemplate()"><i class="fas fa-edit"></i> 文案</button>
+              <button class="btn btn-outline btn-sm" onclick="runAutoReplyNow()"><i class="fas fa-bolt"></i> 立即扫描</button>
+              <button class="btn btn-outline btn-sm" onclick="loadUserFeedbacks()"><i class="fas fa-sync-alt"></i> 刷新</button>
+            </div>
+          </div>
+          <p style="font-size:12px;color:#94a3b8;margin:0 0 12px;">
+            用户在公众号发送「#145060 内容」会实时推送到管理员微信；这里可逐条回复。若 <span id="autoReplyDelayText">10</span> 分钟内管理员未回复，且自动回复开启，会向用户发送引导文案。
+          </p>
+          <div id="userFeedbacksTable">加载中...</div>
+          <div class="pagination" id="userFeedbackPagination"></div>
         </div>
       </div>
 
@@ -833,7 +854,7 @@
         else if (page === 'sponsor-orders') loadSponsorOrders();
         else if (page === 'packages') loadAdminPackages();
         else if (page === 'market-items') loadMarketItems();
-        else if (page === 'feedback') loadFeedbacks();
+        else if (page === 'feedback') { loadFeedbacks(); loadReplySettings(); loadUserFeedbacks(); }
         else if (page === 'email') loadEmailStats();
         else if (page === 'sign-mgmt') loadSignReport();
         else if (page === 'settings') { loadSettings(); loadSponsorNotice(); }
@@ -1031,6 +1052,41 @@
       }
     }
 
+    // 真实发送一条测试通知（会真的推送到用户微信）
+    async function testNotifyReal(category) {
+      if (!currentUserId) return;
+      if (!confirm('将真实推送到该用户微信，确定发送？')) return;
+      const p = document.getElementById('notifyTestResult');
+      if (p) p.textContent = '发送中…';
+      try {
+        const res = await fetch(`${API_BASE}/admin/wx-test`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: currentUserId, category, level: 'always', channels: ['wechat'], dryRun: false })
+        });
+        const d = await res.json();
+        const sent = (d.sent || []).map(s => `${s.channel === 'wechat' ? '微信' : '邮件'}：${s.ok ? '成功' : '失败'}${s.message && s.message !== 'ok' ? '（' + s.message + '）' : ''}`).join('；');
+        if (p) p.textContent = `${d.message || ''}\n${(d.matrix || {}).description || ''}${sent ? '\n' + sent : ''}`;
+        showToast(d.success ? '服务端已接受发送' : (d.message || '发送失败'), d.success ? 'success' : 'error');
+      } catch (e) {
+        if (p) p.textContent = '发送失败：' + e.message;
+      }
+    }
+
+    // 检查用户 UID 是否在当前 AppToken 的应用订阅者列表（收不到推送时排障）
+    async function checkWxSubscription() {
+      const uid = currentUserData && currentUserData.user && currentUserData.user.wxpusherUid;
+      if (!uid) { alert('该用户还没绑定微信'); return; }
+      try {
+        const res = await fetch(`${API_BASE}/admin/wx-user-check?uid=${encodeURIComponent(uid)}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        });
+        const d = await res.json();
+        if (!d.success) { alert(d.message || '检查失败'); return; }
+        alert(d.message + (d.record ? `\n\n订阅时间：${d.record.createTime ? new Date(d.record.createTime).toLocaleString() : '-'}\n订阅者总数：${d.total}` : ''));
+      } catch (e) { alert('检查失败：' + e.message); }
+    }
+
     async function loadMarketUsers(page = 1) {
       marketUsersPage = page;
       const search = document.getElementById('marketUserSearch')?.value || '';
@@ -1135,13 +1191,19 @@
                 <div>时机：${u.notify && u.notify.level === 'always' ? '成功和失败都通知' : '仅失败时通知'}</div>
               </div>
             </div>
-            <div class="form-group"><label>通知矩阵预演（POST /api/admin/wx-test，不真发）</label>
+            <div class="form-group"><label>通知矩阵预演（只算不发，不打扰用户）</label>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('success')">成功</button>
                 <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('password')">密码错</button>
                 <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('school')">学校异常</button>
                 <button class="btn btn-outline btn-sm" onclick="testNotifyMatrix('internal')">内部异常</button>
               </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                <button class="btn btn-warning btn-sm" onclick="testNotifyReal('internal')"><i class="fas fa-paper-plane"></i> 真实发送（失败类）</button>
+                <button class="btn btn-warning btn-sm" onclick="testNotifyReal('success')"><i class="fas fa-paper-plane"></i> 真实发送（成功类）</button>
+                <button class="btn btn-outline btn-sm" onclick="checkWxSubscription()"><i class="fas fa-search"></i> 检查微信订阅</button>
+              </div>
+              <p style="font-size:11px;color:#94a3b8;margin:6px 0 0;">「真实发送」会立刻推送到该用户微信；预演只显示矩阵判定，不会发送。</p>
               <p id="notifyTestResult" style="font-size:12px;color:#64748b;margin:8px 0 0;white-space:pre-line;"></p>
             </div>
             <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;">
@@ -1792,6 +1854,129 @@
     }
 
     function closeReplyModal() { document.getElementById('replyModal').classList.remove('show'); }
+
+    // ========== 微信用户消息（WxPusher 上行反馈）==========
+    let userFeedbackPage = 1;
+    let autoReplyTemplateCache = '';
+
+    async function loadReplySettings() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/reply-settings`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) return;
+        autoReplyTemplateCache = data.settings.template || '';
+        const toggle = document.getElementById('autoReplyEnabled');
+        if (toggle) toggle.checked = !!data.settings.autoReplyEnabled;
+        const delay = document.getElementById('autoReplyDelayText');
+        if (delay) delay.textContent = data.settings.delayMinutes;
+      } catch (e) {}
+    }
+
+    async function loadUserFeedbacks(page = 1) {
+      userFeedbackPage = page;
+      try {
+        const res = await fetch(`${API_BASE}/admin/user-feedbacks?page=${page}&limit=20`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) return;
+        const pendingEl = document.getElementById('userFeedbackPending');
+        if (pendingEl) pendingEl.textContent = String(data.pending || 0);
+        const box = document.getElementById('userFeedbacksTable');
+        if (!box) return;
+        if (!(data.feedbacks || []).length) {
+          box.innerHTML = '<p style="color:#94a3b8;padding:12px 0;">暂无微信消息</p>';
+          const pg = document.getElementById('userFeedbackPagination');
+          if (pg) pg.innerHTML = '';
+          return;
+        }
+        const rows = data.feedbacks.map(f => {
+          const who = f.studentId ? `学号 ${escSponsor(f.studentId)}` : `UID ${escSponsor(String(f.uid || '').slice(0, 10))}…`;
+          const status = f.replied
+            ? '<span class="badge badge-success">已回复</span>'
+            : (f.autoReplied ? '<span class="badge badge-info">已自动回复</span>' : '<span class="badge badge-warning">待回复</span>');
+          const time = f.createdAt ? new Date(f.createdAt).toLocaleString() : '-';
+          const due = !f.replied && !f.autoReplied && f.autoReplyDueAt
+            ? `<br><span style="font-size:11px;color:#94a3b8;">自动回复：${new Date(f.autoReplyDueAt).toLocaleTimeString()}</span>`
+            : '';
+          return `<tr>
+            <td>${who}<br><span style="font-size:11px;color:#94a3b8;">${time}</span></td>
+            <td style="max-width:420px;word-break:break-word;">${escSponsor(f.content)}</td>
+            <td>${status}${due}</td>
+            <td><div class="action-buttons"><button class="btn btn-primary btn-sm" onclick="replyUserFeedback('${escSponsor(String(f._id))}')"><i class="fas fa-reply"></i> 回复</button></div></td>
+          </tr>`;
+        }).join('');
+        box.innerHTML = `<table><thead><tr><th>用户</th><th>内容</th><th>状态</th><th>操作</th></tr></thead><tbody>${rows}</tbody></table>`;
+        const totalPages = Math.ceil((data.total || 0) / 20);
+        const pg = document.getElementById('userFeedbackPagination');
+        if (pg) pg.innerHTML = Array.from({ length: totalPages }, (_, i) =>
+          `<button class="btn ${i + 1 === page ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="loadUserFeedbacks(${i + 1})">${i + 1}</button>`).join('');
+      } catch (e) {}
+    }
+
+    async function replyUserFeedback(id) {
+      const input = prompt('回复内容（会实时推送到用户微信）');
+      if (input === null) return;
+      const content = input.trim();
+      if (!content) { showToast('请输入回复内容', 'error'); return; }
+      try {
+        const res = await fetch(`${API_BASE}/admin/reply-user`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ feedbackId: id, content })
+        });
+        const data = await res.json();
+        if (data.success) { showToast(data.message || '已回复', 'success'); loadUserFeedbacks(userFeedbackPage); }
+        else showToast(data.message || '回复失败', 'error');
+      } catch (e) { showToast('网络错误', 'error'); }
+    }
+
+    async function saveAutoReplyToggle() {
+      const enabled = !!document.getElementById('autoReplyEnabled').checked;
+      try {
+        const res = await fetch(`${API_BASE}/admin/reply-settings`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ autoReplyEnabled: enabled })
+        });
+        const data = await res.json();
+        if (data.success) showToast(enabled ? '已开启延迟自动回复' : '已关闭延迟自动回复', 'success');
+        else { showToast(data.message || '保存失败', 'error'); loadReplySettings(); }
+      } catch (e) { showToast('网络错误', 'error'); loadReplySettings(); }
+    }
+
+    async function editAutoReplyTemplate() {
+      if (!autoReplyTemplateCache) await loadReplySettings();
+      const input = prompt('自动回复文案（支持 {studentId} / {content} 占位符）', autoReplyTemplateCache || '');
+      if (input === null) return;
+      const template = input.trim();
+      if (!template) { showToast('文案不能为空', 'error'); return; }
+      try {
+        const res = await fetch(`${API_BASE}/admin/reply-settings`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ template })
+        });
+        const data = await res.json();
+        if (data.success) { autoReplyTemplateCache = data.settings.template; showToast('文案已保存', 'success'); }
+        else showToast(data.message || '保存失败', 'error');
+      } catch (e) { showToast('网络错误', 'error'); }
+    }
+
+    async function runAutoReplyNow() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/run-auto-reply`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+          const r = data.result || {};
+          const msg = r.disabled ? '自动回复已关闭'
+            : `扫描完成：发送 ${r.sent || 0} 条${r.failed ? '，失败 ' + r.failed + ' 条' : ''}`;
+          showToast(msg, r.failed ? 'warning' : 'success');
+          loadUserFeedbacks(userFeedbackPage);
+        } else showToast(data.message || '扫描失败', 'error');
+      } catch (e) { showToast('网络错误', 'error'); }
+    }
 
     // ========== 群发邮件 ==========
     async function loadEmailStats() {
