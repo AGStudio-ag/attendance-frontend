@@ -1361,7 +1361,7 @@ function escapeAttr(s) {
 async function api(url, opts) {
   opts = opts || {};
   opts.headers = opts.headers || {};
-  opts.headers['Authorization'] = 'Bearer ' + token;
+  opts.headers['Authorization'] = 'Bearer ' + (localStorage.getItem('token') || '');
   if (opts.body && typeof opts.body === 'object') {
     opts.body = JSON.stringify(opts.body);
     opts.headers['Content-Type'] = 'application/json';
@@ -1388,7 +1388,10 @@ async function api(url, opts) {
 }
 
 function logout() {
-  localStorage.clear();
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('attendancePassword');
+  localStorage.removeItem('pendingInviteCode');
   location.replace('/');
 }
 
@@ -2623,7 +2626,7 @@ function init() {
 let noticeQueue = [];
 async function loadUserNotices() {
   try {
-    const res = await fetch(`${API_BASE}/notices`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${API_BASE}/notices`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
     const data = await res.json();
     if (!data.success || !Array.isArray(data.notices) || !data.notices.length) return;
     noticeQueue = data.notices.slice();
@@ -2652,7 +2655,7 @@ function closeNoticeModal() {
   if (mask) mask.classList.remove('show');
   document.body.style.overflow = '';
   if (noticeQueue.length) { setTimeout(showNextNotice, 200); return; }
-  fetch(`${API_BASE}/notices/clear`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }).catch(() => { });
+  fetch(`${API_BASE}/notices/clear`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } }).catch(() => { });
 }
 
 window.addEventListener('pagehide', () => { if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; } });
