@@ -1,0 +1,33 @@
+# Cloudflare Workers 静态资源上传白名单外的排除规则
+# 官方文件名就是 .assetsignore（wrangler 无 .wranglerignore），语法同 .gitignore
+# 背景：wrangler deploy --assets . 是「全量上传」，曾把 .git/ 和 *.bak 当静态资源发布出去。
+# 任何临时文件、备份、日志、密钥都不允许进线上，一律在这里拦掉。
+
+# 版本库与本地状态
+.git/
+.git
+.wrangler/
+
+# 依赖与密钥
+node_modules/
+secrets/
+*.local.txt
+.env
+.env.*
+
+# 备份 / 临时 / 日志
+*.bak
+*.bak-*
+*.tmp
+*.log
+
+# 系统杂项
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 与站点无关的工程文件
+README.md
+wrangler.toml
+package.json
+package-lock.json
