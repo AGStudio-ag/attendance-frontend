@@ -187,6 +187,9 @@
         <div class="menu-item" data-page="email">
           <i class="fas fa-envelope"></i> 群发邮件
         </div>
+        <div class="menu-item" data-page="sign-mgmt">
+          <i class="fas fa-clipboard-check"></i> 签到管理
+        </div>
         <div class="menu-item" data-page="settings">
           <i class="fas fa-cog"></i> 系统设置
         </div>
@@ -449,6 +452,25 @@
         </div>
       </div>
 
+      <!-- ===== 签到管理 ===== -->
+      <div id="page-sign-mgmt" class="hidden">
+        <div class="content-card">
+          <div class="card-header">
+            <h3><i class="fas fa-clipboard-check"></i> 今日自动签到覆盖</h3>
+            <button class="btn btn-primary" onclick="loadSignReport()"><i class="fas fa-sync"></i> 刷新</button>
+          </div>
+          <div id="signReportBox" style="color:#888;">点击"刷新"查看今日签到名单</div>
+        </div>
+        <div class="content-card">
+          <div class="card-header"><h3><i class="fas fa-envelope-open-text"></i> 邮件工具</h3></div>
+          <p style="color:#666;font-size:13px;margin:0 0 12px;">管理员汇总每天 23:59 自动发送（已发则跳过）；续费提醒每天 10:00 自动检查（到期前 7 天 / 1 天，仅发送给已绑定邮箱的会员）。以下按钮可手动触发。</p>
+          <button class="btn btn-primary" onclick="sendTodaySummary()" id="btnSendSummary"><i class="fas fa-paper-plane"></i> 立即发送今日汇总邮件</button>
+          <button class="btn" style="margin-left:8px;background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="runRenewalCheck()" id="btnRenewalCheck"><i class="fas fa-bell"></i> 立即检查续费提醒</button>
+          <button class="btn" style="margin-left:8px;background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="runRetryMissing()" id="btnRetryMissing"><i class="fas fa-redo"></i> 立即补签未成功用户</button>
+          <span id="mailToolResult" style="margin-left:12px;color:#666;"></span>
+        </div>
+      </div>
+
       <!-- ===== 系统设置 ===== -->
       <div id="page-settings" class="hidden">
         <div class="content-card">
@@ -470,6 +492,33 @@
           <div class="card-header"><h3><i class="fas fa-gift"></i> 邀请奖励设置</h3></div>
           <div class="form-group"><label>每人奖励会员天数</label><input type="number" id="inviteRewardDays" value="10" min="1" max="365"></div>
           <button class="btn btn-primary" onclick="saveInviteReward()"><i class="fas fa-save"></i> 保存奖励设置</button>
+        </div>
+
+        <div class="content-card">
+          <div class="card-header"><h3><i class="fas fa-bell"></i> 手机实时提醒（WxPusher）</h3></div>
+          <p style="color:#666;font-size:13px;margin:0 0 12px;">签到汇总、<b>每个人签到失败</b>、补签结果、新留言都会<b>立刻推送到手机</b>。为省 Resend 邮件额度，日常不再发邮件，只有"重要的、或推送失败"时才用邮件兜底。填入 WxPusher 的 SPT 令牌后保存，再点"发送测试提醒"验证。</p>
+          <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;color:#173b36;">
+              <input type="checkbox" id="wxpusherEnabled" style="width:16px;height:16px;"> 启用手机推送
+            </label>
+            <span id="wxpusherStatus" style="font-size:12px;color:#94a3b8;"></span>
+          </div>
+          <div class="form-group"><label>SPT 令牌（推荐，最省事）</label><input type="text" id="wxpusherSpt" placeholder="SPT_xxxxxxxx（留空=不修改）"></div>
+          <details style="margin:0 0 12px;color:#64748b;font-size:13px;">
+            <summary style="cursor:pointer;">进阶：用 appToken + UID 推送（可选）</summary>
+            <div class="form-row" style="margin-top:8px;">
+              <div class="form-group"><label>appToken</label><input type="text" id="wxpusherAppToken" placeholder="AT_xxxxxxxx"></div>
+              <div class="form-group"><label>UID / Topic ID（逗号分隔）</label><input type="text" id="wxpusherUids" placeholder="UID_xxx 或数字 Topic ID"></div>
+            </div>
+          </details>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn btn-primary" onclick="saveAlertChannels()"><i class="fas fa-save"></i> 保存提醒设置</button>
+            <button class="btn" style="background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="testAlertChannels()"><i class="fas fa-paper-plane"></i> 发送测试提醒</button>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:#64748b;cursor:pointer;"><input type="checkbox" id="alertTestEmail" style="width:14px;height:14px;"> 同时发一封邮件</label>
+            <button class="btn" style="background:#f0f2f6;color:#334155;border:1px solid #e2e8f0;" onclick="enableBrowserNotify()"><i class="fas fa-desktop"></i> 开启浏览器通知</button>
+            <span id="alertSaveResult" style="color:#666;font-size:13px;"></span>
+          </div>
+          <div id="alertTestResult" style="margin-top:10px;font-size:13px;line-height:1.9;"></div>
         </div>
 
         <!-- ===== 🆕 赞助者专属通知卡片 ===== -->
@@ -598,6 +647,7 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script>
     const API_BASE = 'https://api.agai.online/api';
     const token = localStorage.getItem('token');
@@ -622,6 +672,11 @@
     };
     const CUSTOM_TIME_TIERS = ['YEARLY_PRO', 'FRESHMAN', 'SOPHOMORE', 'JUNIOR', 'VIP', 'SVIP', 'LEGACY'];
     function tierLabel(tier) { return TIER_LABELS[tier] || tier || '免费'; }
+    function memberLabel(u) {
+      const span = (u && u.vipExpireAt && u.vipStartAt) ? (new Date(u.vipExpireAt).getTime() - new Date(u.vipStartAt).getTime()) : 0;
+      if (span >= 2 * 86400000 && span <= 4 * 86400000) return '3天体验会员';
+      return tierLabel(u && u.vipTier);
+    }
     function tierSupportsCustom(tier) { return CUSTOM_TIME_TIERS.includes(tier); }
     function fmtDate(value) {
       if (!value) return '—';
@@ -655,7 +710,7 @@
     // ========== 权限检查 ==========
     async function checkAdmin() {
       try {
-        const res = await fetch(`${API_BASE}/user/profile`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/user/profile`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (!data.success || data.user.role !== 'admin') {
           alert('需要管理员权限');
@@ -685,7 +740,7 @@
         const titles = {
           dashboard: '仪表盘', users: '考勤用户管理', 'market-users': '交易平台用户管理', cards: '卡密管理',
           reports: '举报管理', orders: '订单管理', 'sponsor-orders': '赞助订单', packages: '套餐管理', 'market-items': '商品管理',
-          feedback: '留言管理', email: '群发邮件', settings: '系统设置'
+          feedback: '留言管理', email: '群发邮件', 'sign-mgmt': '签到管理', settings: '系统设置'
         };
         document.getElementById('pageTitle').textContent = titles[page];
 
@@ -700,14 +755,62 @@
         else if (page === 'market-items') loadMarketItems();
         else if (page === 'feedback') loadFeedbacks();
         else if (page === 'email') loadEmailStats();
+        else if (page === 'sign-mgmt') loadSignReport();
         else if (page === 'settings') { loadSettings(); loadSponsorNotice(); }
       });
     });
 
+    // ========== 签到管理 ==========
+    async function loadSignReport() {
+      const box = document.getElementById('signReportBox');
+      box.innerHTML = '加载中...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/autosign-report`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) { box.innerHTML = '<span style="color:#dc3545;">加载失败：' + (data.message || '') + '</span>'; return; }
+        let html = `<p style="margin:0 0 10px;color:#334155;">自动签到用户 <strong>${data.total}</strong> 人，今日已签 <strong style="color:#166534;">${data.signed}</strong> 人，未签 <strong style="color:#b42318;">${data.missing.length}</strong> 人</p>`;
+        if (!data.missing.length) {
+          html += '<p style="color:#166534;margin:0;">✅ 全部已签到</p>';
+        } else {
+          html += '<table style="width:100%;border-collapse:collapse;font-size:13px;"><thead><tr style="color:#64748b;text-align:left;"><th style="padding:6px;border-bottom:1px solid #e2e8f0;">学号</th><th style="padding:6px;border-bottom:1px solid #e2e8f0;">姓名</th><th style="padding:6px;border-bottom:1px solid #e2e8f0;">会员</th><th style="padding:6px;border-bottom:1px solid #e2e8f0;">到期时间</th></tr></thead><tbody>';
+          for (const m of data.missing) {
+            const exp = m.vipExpireAt ? new Date(m.vipExpireAt).toLocaleString('zh-CN') : '长期';
+            html += `<tr><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${m.studentId}</td><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${m.name || '-'}</td><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${m.vipTier || '-'}</td><td style="padding:6px;border-bottom:1px solid #f0f2f6;">${exp}</td></tr>`;
+          }
+          html += '</tbody></table>';
+        }
+        box.innerHTML = html;
+      } catch (e) { box.innerHTML = '<span style="color:#dc3545;">加载异常：' + e.message + '</span>'; }
+    }
+
+    async function sendTodaySummary() {
+      const btn = document.getElementById('btnSendSummary'); const out = document.getElementById('mailToolResult');
+      btn.disabled = true; out.textContent = '发送中...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/send-summary`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        out.textContent = data.success ? '✅ 今日汇总邮件已发送，请查收邮箱' : '❌ ' + (data.message || '发送失败');
+      } catch (e) { out.textContent = '❌ ' + e.message; }
+      btn.disabled = false;
+    }
+
+    async function runRenewalCheck() {
+      const btn = document.getElementById('btnRenewalCheck'); const out = document.getElementById('mailToolResult');
+      btn.disabled = true; out.textContent = '检查中...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/check-renewal`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) { out.textContent = '❌ ' + (data.message || '检查失败'); }
+        else if (!data.sent) { out.textContent = `检查完成：本次无到期提醒可发（已发 ${data.sent} 封 / 失败 ${data.failed} 封）`; }
+        else { out.textContent = `✅ 已发送 ${data.sent} 封续费提醒` + (data.details || []).map(d => `（${d.studentId} ${d.days}天）`).join(''); }
+      } catch (e) { out.textContent = '❌ ' + e.message; }
+      btn.disabled = false;
+    }
+
     // ========== 仪表盘 ==========
     async function loadDashboardStats() {
       try {
-        const res = await fetch(`${API_BASE}/admin/stats`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/stats`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           document.getElementById('statTotalUsers').textContent = data.stats.users.total;
@@ -745,7 +848,7 @@
       const btn = document.querySelector('#page-dashboard .btn-warning');
       btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 执行中...';
       try {
-        const res = await fetch(`${API_BASE}/admin/trigger-sign`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/trigger-sign`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         document.getElementById('triggerResult').innerHTML = data.success
           ? '<span style="color:#28a745;">✅ 任务已触发</span>'
@@ -760,7 +863,7 @@
       const search = document.getElementById('userSearch')?.value || '';
       try {
           const res = await fetch(`${API_BASE}/admin/users?page=${page}&limit=20&scope=attendance&search=${encodeURIComponent(search)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
         });
         const data = await res.json();
         if (data.success) {
@@ -773,7 +876,9 @@
                   <td>${(u.name && u.name !== u.studentId) ? u.name : '未实名'}</td>
                   <td>${u.email || '-'} ${u.emailVerified ? '✓' : ''}</td>
                   <td>${u.isVip
-                    ? `<span class="badge badge-success">${tierLabel(u.vipTier)}</span><br><span style="font-size:12px;color:#94a3b8;">${fmtDate(u.vipExpireAt)}${tierSupportsCustom(u.vipTier) ? ' · 可自定义' : ''}</span>`
+                    ? (u.vipExpireAt && new Date(u.vipExpireAt).getTime() <= Date.now()
+                        ? `<span class="badge badge-danger">${memberLabel(u)} · 已过期${Math.max(0, Math.floor((Date.now() - new Date(u.vipExpireAt).getTime()) / 86400000)) > 0 ? Math.max(0, Math.floor((Date.now() - new Date(u.vipExpireAt).getTime()) / 86400000)) + '天' : '（今天）'}</span><br><span style="font-size:12px;color:#94a3b8;">到期 ${fmtDate(u.vipExpireAt)}</span>`
+                        : `<span class="badge badge-success">${memberLabel(u)}</span><br><span style="font-size:12px;color:#94a3b8;">${fmtDate(u.vipExpireAt)}${tierSupportsCustom(u.vipTier) ? ' · 可自定义' : ''}</span>`)
                     : '<span class="badge badge-danger">普通</span>'}</td>
                   <td>${u.role === 'admin' ? '<span class="badge badge-admin">管理员</span>' : '<span class="badge badge-info">用户</span>'}</td>
                   <td>${u.successSignCount || 0}/${u.totalSignCount || 0}</td>
@@ -804,7 +909,7 @@
       const search = document.getElementById('marketUserSearch')?.value || '';
       try {
         const res = await fetch(`${API_BASE}/admin/users?page=${page}&limit=20&scope=market&search=${encodeURIComponent(search)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
         });
         const data = await res.json();
         if (data.success) {
@@ -854,7 +959,7 @@
       try {
         showToast(`正在为 ${studentId} 签到...`, 'info');
         const res = await fetch(`${API_BASE}/admin/sign/${userId}`, {
-          method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ attendancePassword: password || undefined })
         });
         const data = await res.json();
@@ -868,7 +973,7 @@
     async function viewUser(userId) {
       currentUserId = userId;
       try {
-        const res = await fetch(`${API_BASE}/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           currentUserData = data;
@@ -922,7 +1027,7 @@
     async function saveUserChanges() {
       try {
         const res = await fetch(`${API_BASE}/admin/users/${currentUserId}`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: document.getElementById('editName')?.value,
             email: document.getElementById('editEmail')?.value,
@@ -949,7 +1054,7 @@
       expireAt.setDate(expireAt.getDate() + days);
       try {
         const res = await fetch(`${API_BASE}/admin/users/${currentUserId}`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ isVip: true, vipExpireAt: expireAt.toISOString() })
         });
         if ((await res.json()).success) { showToast(`已添加 ${days} 天会员`, 'success'); viewUser(currentUserId); reloadActiveUserPage(); }
@@ -958,7 +1063,7 @@
 
     async function quickVip(userId, days) {
       try {
-        const res = await fetch(`${API_BASE}/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/users/${userId}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (!data.success) return;
         const user = data.user;
@@ -966,7 +1071,7 @@
         if (!user.isVip || expireAt < new Date()) expireAt = new Date();
         expireAt.setDate(expireAt.getDate() + days);
         await fetch(`${API_BASE}/admin/users/${userId}`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ isVip: true, vipExpireAt: expireAt.toISOString() })
         });
         showToast(`已添加 ${days} 天会员`, 'success');
@@ -980,7 +1085,7 @@
       if (!confirm(`确定删除用户 ${studentId} 吗？此操作不可恢复！`)) return;
       if (!confirm('再次确认：删除后将清除该用户的所有数据！')) return;
       try {
-        const res = await fetch(`${API_BASE}/admin/users/${userId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/users/${userId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         if ((await res.json()).success) {
           showToast(`✅ 用户 ${studentId} 已删除`, 'success');
           closeUserModal(); reloadActiveUserPage(); loadDashboardStats();
@@ -1008,7 +1113,7 @@
       const box = document.getElementById('adminPackagesTable');
       if (!box) return;
       try {
-        const res = await fetch(`${API_BASE}/admin/sponsor-packages`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/sponsor-packages`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (!data.success || !data.packages || !data.packages.length) { box.innerHTML = '<p class="empty">暂无套餐</p>'; return; }
         adminPkgCache = data.packages;
@@ -1111,7 +1216,7 @@
         const url = editingPkgId ? `${API_BASE}/admin/sponsor-packages/${editingPkgId}` : `${API_BASE}/admin/sponsor-packages`;
         const res = await fetch(url, {
           method: editingPkgId ? 'PUT' : 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
         const data = await res.json();
@@ -1124,7 +1229,7 @@
 
     async function adminDeletePackage(id) {
       if (!confirm('确定删除这个套餐？历史订单不会受影响。')) return;
-      const res = await fetch(`${API_BASE}/admin/sponsor-packages/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+      const res = await fetch(`${API_BASE}/admin/sponsor-packages/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
       const data = await res.json();
       alert(data.message || (data.success ? '已删除' : '删除失败'));
       loadAdminPackages();
@@ -1142,25 +1247,30 @@
       if (status) params.set('status', status);
       if (reviewStatus) params.set('reviewStatus', reviewStatus);
       try {
-        const res = await fetch(`${API_BASE}/admin/sponsor-orders?${params.toString()}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/sponsor-orders?${params.toString()}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (!data.success) { box.innerHTML = '<p class="empty">加载失败</p>'; return; }
         if (!data.orders.length) { box.innerHTML = '<p class="empty">暂无赞助订单</p>'; return; }
         box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>订单号</th><th>用户</th><th>套餐</th><th>金额</th><th>状态</th><th>核对</th><th>支付备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody>' +
           data.orders.map(o => {
             const u = o.userId || {};
-            const canConfirm = o.status === 'granted' && o.reviewStatus !== 'confirmed';
+            const canConfirm = o.reviewStatus !== 'rejected';
             const canRevoke = o.status === 'granted' && o.reviewStatus !== 'rejected';
-            const actions = (canConfirm ? '<button class="btn btn-success" style="padding:6px 10px;font-size:12px;" onclick="confirmSponsorOrder(\'' + o._id + '\')">确认到账</button> ' : '') +
+            const confirmLabel = o.reviewStatus === 'confirmed' ? '调整套餐' : '确认到账';
+            const actions = (canConfirm ? '<button class="btn btn-success" style="padding:6px 10px;font-size:12px;" onclick="confirmSponsorOrder(\'' + o._id + '\',' + Number(o.amount || 0) + ')">' + confirmLabel + '</button> ' : '') +
               (canRevoke ? '<button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="revokeSponsorOrder(\'' + o._id + '\')">取消权益</button>' : '');
             const planName = o.packageName || tierLabel(o.tier);
             const duration = o.durationLabel || (o.days ? o.days + ' 天' : '');
+            const grantedLine = (o.grantedPackageName && o.grantedPackageName !== planName)
+              ? '<br><span style="font-size:12px;color:#2563eb;">实开：' + escSponsor(o.grantedPackageName) + (o.grantedDays ? '（' + o.grantedDays + ' 天）' : '') + '</span>'
+              : '';
             const coupon = o.couponDiscount > 0 ? '<br><span style="font-size:12px;color:#f59e0b;">优惠码 ' + escSponsor(o.couponCode) + ' -¥' + Number(o.couponDiscount).toFixed(2) + '</span>' : '';
+            const actualLine = (o.amountMismatch && o.actualAmount) ? '<br><span style="font-size:12px;color:#0891b2;">实收 ¥' + Number(o.actualAmount).toFixed(2) + '</span>' : '';
             return '<tr>' +
               '<td style="font-size:12px;">' + escSponsor(o.orderNo) + '</td>' +
               '<td>' + escSponsor(u.studentId || '') + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(u.name || '') + '</span></td>' +
-              '<td>' + escSponsor(planName) + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(duration) + '</span></td>' +
-              '<td>¥' + Number(o.amount || 0).toFixed(2) + coupon + '</td>' +
+              '<td>' + escSponsor(planName) + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(duration) + '</span>' + grantedLine + '</td>' +
+              '<td>¥' + Number(o.amount || 0).toFixed(2) + actualLine + coupon + '</td>' +
               '<td>' + escSponsor(o.status) + '</td>' +
               '<td>' + escSponsor(o.reviewStatus) + '</td>' +
               '<td style="max-width:160px;word-break:break-all;font-size:12px;">' + escSponsor(o.paymentRef || o.claimNote || '') + '</td>' +
@@ -1169,21 +1279,65 @@
           }).join('') + '</tbody></table></div>';
       } catch (e) { box.innerHTML = '<p class="empty">加载失败</p>'; }
     }
-    async function confirmSponsorOrder(id) {
-      if (!confirm('确认已收到付款并保留该用户权益？')) return;
-      const res = await fetch(`${API_BASE}/admin/sponsor-orders/${id}/confirm`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}'
-      });
-      const data = await res.json();
-      alert(data.message || (data.success ? '已确认' : '操作失败'));
+    async function confirmSponsorOrder(id, amount) {
+      const orderAmount = Number(amount || 0);
+      const input = prompt(`实收金额（元）\n订单金额：¥${orderAmount.toFixed(2)}\n若实收不同，填实际到账金额（下一步可以再手动指定套餐）。`, orderAmount.toFixed(2));
+      if (input === null) return;
+      const actualAmount = Number(String(input).replace(/[^\d.]/g, ''));
+      if (!Number.isFinite(actualAmount) || actualAmount <= 0) { alert('金额格式不正确'); return; }
+
+      // 可选：手动指定要开通的套餐（改套餐会按新套餐重新计算到期时间）
+      const planList = [
+        { code: 'monthly', label: '月卡  ¥6.66（30 天）' },
+        { code: 'term', label: '学期卡  ¥9.99（120 天）' },
+        { code: 'yearly', label: '学年卡  ¥15.01（365 天）' },
+        { code: 'yearly_pro', label: '学年卡 Pro  ¥20.00（365 天，可自定义时间）' },
+        { code: 'freshman', label: '大一启航卡  ¥49.90（至毕业）' },
+        { code: 'sophomore', label: '大二续航卡  ¥39.90（至毕业/3 年封顶）' },
+        { code: 'junior', label: '大三冲刺卡  ¥28.80（至毕业/2 年封顶）' }
+      ];
+      const pickText = planList.map((p, i) => `${i + 1}. ${p.label}`).join('\n');
+      const planPick = prompt(`要改成其它套餐吗？（留空 = 按实收金额自动匹配）\n${pickText}`, '');
+      if (planPick === null) return;
+      let grantPlanCode = '';
+      const pickNo = Number(String(planPick).trim());
+      if (pickNo >= 1 && pickNo <= planList.length) grantPlanCode = planList[pickNo - 1].code;
+
+      const body = { actualAmount };
+      if (grantPlanCode) body.grantPlanCode = grantPlanCode;
+      if (grantPlanCode) {
+        if (!confirm(`将把该订单改为「${planList[pickNo - 1].label}」，并按新套餐重新计算到期时间（实收 ¥${actualAmount.toFixed(2)}）。继续？`)) return;
+      } else if (Math.abs(actualAmount - orderAmount) > 0.1) {
+        if (!confirm(`订单 ¥${orderAmount.toFixed(2)}，实收 ¥${actualAmount.toFixed(2)}：将按实收金额匹配套餐开通，并弹窗通知用户（不发邮件）。继续？`)) return;
+      }
+
+      let data = null;
+      try {
+        let res = await fetch(`${API_BASE}/admin/sponsor-orders/${id}/confirm`, {
+          method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        data = await res.json();
+        if (!data.success && data.needPlan && Array.isArray(data.plans)) {
+          const list = data.plans.map((p, i) => `${i + 1}. ${p.name}  ¥${p.price}`).join('\n');
+          const pick = prompt(`${data.message}\n\n请选择要开通的套餐编号：\n${list}`, '');
+          if (pick === null) return;
+          const chosen = data.plans[Number(pick) - 1];
+          if (!chosen) { alert('编号无效'); return; }
+          res = await fetch(`${API_BASE}/admin/sponsor-orders/${id}/confirm`, {
+            method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ actualAmount, grantPlanCode: chosen.code })
+          });
+          data = await res.json();
+        }
+      } catch (e) { alert('操作失败：' + e.message); return; }
+      alert((data && data.message) || (data && data.success ? '已确认' : '操作失败'));
       loadSponsorOrders();
     }
     async function revokeSponsorOrder(id) {
-      const note = prompt('取消原因（会通过邮件通知用户）：', '未匹配到付款');
+      const note = prompt('取消原因（会在用户下次登录时弹窗提示，不发邮件）：', '未匹配到付款');
       if (note === null) return;
-      if (!confirm('确定取消该订单权益并发送邮件通知？')) return;
+      if (!confirm('确定取消该订单权益？用户下次登录会看到弹窗说明。')) return;
       const res = await fetch(`${API_BASE}/admin/sponsor-orders/${id}/revoke`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ note })
+        method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ note })
       });
       const data = await res.json();
       alert(data.message || (data.success ? '已取消' : '操作失败'));
@@ -1196,7 +1350,7 @@
       btn.disabled = true; btn.textContent = '发送中...';
       try {
         const res = await fetch(`${API_BASE}/admin/announcement`, {
-          method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}'
+          method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' }, body: '{}'
         });
         const data = await res.json();
         out.textContent = data.message || '';
@@ -1208,7 +1362,7 @@
     async function loadCards() {
       const status = document.getElementById('cardStatusFilter')?.value || '';
       try {
-        const res = await fetch(`${API_BASE}/admin/cards?limit=100${status ? '&status=' + status : ''}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/cards?limit=100${status ? '&status=' + status : ''}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           document.getElementById('cardsStats').innerHTML = `
@@ -1235,7 +1389,7 @@
       const days = parseInt(document.getElementById('cardDays').value);
       try {
         const res = await fetch(`${API_BASE}/admin/cards/generate`, {
-          method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ count, days })
         });
         const data = await res.json();
@@ -1255,7 +1409,7 @@
       reportsCurrentPage = page;
       const status = document.getElementById('reportStatusFilter')?.value || '';
       try {
-        const res = await fetch(`${API_BASE}/admin/reports?page=${page}&status=${status}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/reports?page=${page}&status=${status}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           const badge = document.getElementById('reportBadge');
@@ -1282,7 +1436,7 @@
     async function handleReport(id, status) {
       try {
         const res = await fetch(`${API_BASE}/admin/reports/${id}`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
         });
         if ((await res.json()).success) {
@@ -1297,7 +1451,7 @@
       ordersCurrentPage = page;
       const status = document.getElementById('orderStatusFilter')?.value || '';
       try {
-        const res = await fetch(`${API_BASE}/admin/orders?page=${page}&limit=20&status=${status}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/orders?page=${page}&limit=20&status=${status}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           document.getElementById('ordersStats').innerHTML = `<span class="badge badge-info">总计: ${data.total || 0}</span>`;
@@ -1334,7 +1488,7 @@
     async function loadMarketItems(page = 1) {
       marketItemsPage = page;
       try {
-        const res = await fetch(`${API_BASE}/admin/market-items?page=${page}&limit=20`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/market-items?page=${page}&limit=20`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           document.getElementById('marketItemsStats').innerHTML = `<span class="badge badge-info">总计: ${data.total || 0}</span>`;
@@ -1361,7 +1515,7 @@
     async function deleteMarketItem(id) {
       if (!confirm('确定下架该商品？')) return;
       try {
-        await fetch(`${API_BASE}/admin/market-items/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        await fetch(`${API_BASE}/admin/market-items/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         showToast('已下架', 'success');
         loadMarketItems(marketItemsPage);
       } catch (e) { showToast('操作失败', 'error'); }
@@ -1373,7 +1527,7 @@
       const status = document.getElementById('feedbackStatusFilter')?.value || '';
       const type = document.getElementById('feedbackTypeFilter')?.value || '';
       try {
-        const res = await fetch(`${API_BASE}/admin/feedback?page=${page}&status=${status}&type=${type}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/feedback?page=${page}&status=${status}&type=${type}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           const badge = document.getElementById('feedbackBadge');
@@ -1413,7 +1567,7 @@
 
     async function viewFeedbackDetail(id) {
       try {
-        const res = await fetch(`${API_BASE}/feedback/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/feedback/${id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           const f = data.feedback;
@@ -1424,7 +1578,7 @@
 
     async function openReplyModal(id) {
       try {
-        const res = await fetch(`${API_BASE}/feedback/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/feedback/${id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           const f = data.feedback;
@@ -1445,7 +1599,7 @@
       if (!reply) { alert('请输入回复内容'); return; }
       try {
         const res = await fetch(`${API_BASE}/admin/feedback/${id}/reply`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ reply })
         });
         if ((await res.json()).success) { showToast('回复成功', 'success'); closeReplyModal(); loadFeedbacks(feedbackCurrentPage); }
@@ -1456,7 +1610,7 @@
     async function markAsRead(id) {
       try {
         await fetch(`${API_BASE}/admin/feedback/${id}/status`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'read' })
         });
         closeReplyModal(); loadFeedbacks(feedbackCurrentPage);
@@ -1466,7 +1620,7 @@
     async function deleteFeedback(id) {
       if (!confirm('确定删除这条留言吗？')) return;
       try {
-        await fetch(`${API_BASE}/admin/feedback/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+        await fetch(`${API_BASE}/admin/feedback/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         showToast('删除成功', 'success');
         loadFeedbacks(feedbackCurrentPage);
       } catch (e) { showToast('删除失败', 'error'); }
@@ -1477,7 +1631,7 @@
     // ========== 群发邮件 ==========
     async function loadEmailStats() {
       try {
-        const res = await fetch(`${API_BASE}/admin/email-recipients-count`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/email-recipients-count`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           document.getElementById('emailRecipientStats').innerHTML = `
@@ -1496,7 +1650,7 @@
       if (!subject || !content) { showToast('请填写主题和内容', 'error'); return; }
       if (!recipients) { showToast('请选择发送范围', 'error'); return; }
 
-      const stats = await fetch(`${API_BASE}/admin/email-recipients-count`, { headers: { 'Authorization': `Bearer ${token}` } })
+      const stats = await fetch(`${API_BASE}/admin/email-recipients-count`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } })
         .then(r => r.json());
       const count = recipients === 'vip' ? stats.vip : (recipients === 'nonVip' ? (stats.all - stats.vip) : stats.all);
 
@@ -1509,7 +1663,7 @@
       try {
         const res = await fetch(`${API_BASE}/admin/send-bulk-email`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ subject, content, recipients, filterGuest })
         });
         const data = await res.json();
@@ -1526,7 +1680,7 @@
     // ========== 设置 ==========
     async function loadSettings() {
       try {
-        const res = await fetch(`${API_BASE}/admin/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/config`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success) {
           if (data.configs.dashboard_notice) {
@@ -1537,6 +1691,7 @@
             document.getElementById('noticeStyle').value = notice.style || 'info';
           }
           if (data.configs.invite_reward_days) document.getElementById('inviteRewardDays').value = data.configs.invite_reward_days;
+          loadAlertChannels();
         }
       } catch (e) {}
     }
@@ -1550,7 +1705,7 @@
       };
       try {
         const res = await fetch(`${API_BASE}/admin/config/dashboard_notice`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ value })
         });
         if ((await res.json()).success) showToast('通知设置已保存', 'success');
@@ -1562,7 +1717,7 @@
       const value = parseInt(document.getElementById('inviteRewardDays').value);
       try {
         const res = await fetch(`${API_BASE}/admin/config/invite_reward_days`, {
-          method: 'PUT', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          method: 'PUT', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ value })
         });
         if ((await res.json()).success) showToast('奖励设置已保存', 'success');
@@ -1581,7 +1736,7 @@
     // ========== 🆕 赞助者专属通知 ==========
     async function loadSponsorNotice() {
       try {
-        const res = await fetch(`${API_BASE}/admin/config`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`${API_BASE}/admin/config`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
         const data = await res.json();
         if (data.success && data.configs.sponsor_notice) {
           const notice = data.configs.sponsor_notice;
@@ -1610,7 +1765,7 @@
       try {
         const res = await fetch(`${API_BASE}/admin/config/sponsor_notice`, {
           method: 'PUT',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ value })
         });
         const data = await res.json();
@@ -1638,7 +1793,7 @@
     async function loadReportBadge() {
       try {
         const res = await fetch(`${API_BASE}/admin/reports?page=1&limit=1`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
         });
         const data = await res.json();
         if (!data.success) return;
@@ -1660,7 +1815,7 @@
       if (table) table.innerHTML = '加载中...';
       try {
         const res = await fetch(`${API_BASE}/admin/reports?page=${page}&limit=20&status=${encodeURIComponent(status)}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
         });
         const data = await res.json();
         if (!data.success) {
@@ -1723,7 +1878,7 @@
       try {
         const res = await fetch(`${API_BASE}/admin/reports/${id}`, {
           method: 'PUT',
-          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({ status })
         });
         const data = await res.json();
@@ -1738,7 +1893,13 @@
       }
     }
 
-    function logout() { localStorage.clear(); window.location.href = '/'; }
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('attendancePassword');
+      localStorage.removeItem('pendingInviteCode');
+      window.location.href = '/';
+    }
 
     // ========== 事件绑定 ==========
     document.getElementById('userDetailModal').addEventListener('click', function(e) { if (e.target === this) closeUserModal(); });
@@ -1746,9 +1907,118 @@
     document.getElementById('pkgModal').addEventListener('click', function(e) { if (e.target === this) closePkgModal(); });
 
     // ========== 初始化 ==========
+    // ========== 补签 / 实时提醒 ==========
+    async function runRetryMissing() {
+      const btn = document.getElementById('btnRetryMissing');
+      const out = document.getElementById('mailToolResult');
+      if (btn) btn.disabled = true;
+      if (out) out.textContent = '补签中（逐个重试未签到成员，可能需要 1-2 分钟）...';
+      try {
+        const res = await fetch(`${API_BASE}/admin/retry-missing`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) { if (out) out.textContent = '❌ ' + (data.message || '失败'); }
+        else if (data.skipped) { if (out) out.textContent = '未执行：' + data.skipped; }
+        else {
+          let msg = `检查 ${data.checked} 人，补回 ${data.recovered} 人，仍失败 ${data.failed} 人`;
+          if (data.passwordIssues && data.passwordIssues.length) msg += `（密码问题：${data.passwordIssues.join(', ')}）`;
+          if (out) out.textContent = msg;
+          showToast('补签完成：' + msg, data.failed ? 'warning' : 'success');
+        }
+      } catch (e) { if (out) out.textContent = '❌ ' + e.message; }
+      if (btn) btn.disabled = false;
+    }
+
+    function escapeAttr(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    async function loadAlertChannels() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/alert-channels`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) return;
+        const ch = data.channels || {};
+        const en = document.getElementById('wxpusherEnabled'); if (en) en.checked = ch.enabled !== false;
+        const spt = document.getElementById('wxpusherSpt'); if (spt) spt.value = ch.spt || '';
+        const at = document.getElementById('wxpusherAppToken'); if (at) at.value = ch.appToken || '';
+        const uids = document.getElementById('wxpusherUids'); if (uids) uids.value = [ch.uids, ch.topicIds].filter(Boolean).join(',');
+        const st = document.getElementById('wxpusherStatus');
+        if (st) st.textContent = ch.configured ? '✅ 已配置' : '未配置（填 SPT 后生效）';
+        const hint = document.getElementById('alertSaveResult');
+        if (hint && data.email) hint.textContent = `邮件通道：${data.email.to}${data.email.enabled ? '' : '（未配置）'}`;
+      } catch (e) {}
+    }
+    async function saveAlertChannels() {
+      const channels = {
+        enabled: !!(document.getElementById('wxpusherEnabled') || {}).checked,
+        spt: ((document.getElementById('wxpusherSpt') || {}).value || '').trim(),
+        appToken: ((document.getElementById('wxpusherAppToken') || {}).value || '').trim(),
+        uids: ((document.getElementById('wxpusherUids') || {}).value || '').trim()
+      };
+      const out = document.getElementById('alertSaveResult');
+      try {
+        const res = await fetch(`${API_BASE}/admin/alert-channels`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ channels })
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (out) out.textContent = '✅ 已保存，实时提醒已生效';
+          showToast('提醒设置已保存', 'success');
+          loadAlertChannels();
+        } else {
+          if (out) out.textContent = '❌ ' + (data.message || '保存失败');
+          showToast('保存失败', 'error');
+        }
+      } catch (e) { showToast('保存失败：' + e.message, 'error'); }
+    }
+    async function testAlertChannels() {
+      const out = document.getElementById('alertTestResult');
+      if (out) out.innerHTML = '<span style="color:#94a3b8;">⏳ 正在发送测试消息…</span>';
+      try {
+        const res = await fetch(`${API_BASE}/admin/alert-test`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: !!(document.getElementById('alertTestEmail') || {}).checked })
+        });
+        const data = await res.json();
+        if (!data.success) { if (out) out.innerHTML = '❌ ' + escapeAttr(data.message || '发送失败'); return; }
+        const push = data.push || null;
+        const pushLine = push ? `${push.ok ? '✅' : '❌'} 手机推送（WxPusher）${push.ok ? '' : '：' + escapeAttr(push.message || '失败')}` : '<span style="color:#94a3b8;">手机推送未启用</span>';
+        const mailLine = data.email === null ? '<span style="color:#94a3b8;">邮件：未发送（日常不用邮件，仅重要事件或推送失败时兜底）</span>' : `📧 邮件：${data.email ? '已发送' : '发送失败'}`;
+        if (out) out.innerHTML = `<div>${pushLine}</div><div>${mailLine}</div>`;
+      } catch (e) { if (out) out.innerHTML = '❌ ' + escapeAttr(e.message); }
+    }
+
+    function enableBrowserNotify() {
+      if (!window.Notification) { showToast('当前浏览器不支持通知', 'warning'); return; }
+      Notification.requestPermission().then(p => showToast(p === 'granted' ? '浏览器通知已开启' : '未开启通知', p === 'granted' ? 'success' : 'warning'));
+    }
+
+    async function initRealtimeFeedback() {
+      try {
+        if (typeof io !== 'function') return;
+        const res = await fetch(`${API_BASE}/user/profile`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        const myId = data && data.user && data.user.id;
+        if (!myId) return;
+        const socket = io('https://api.agai.online', { transports: ['websocket', 'polling'] });
+        socket.on('connect', () => socket.emit('bindUser', String(myId)));
+        socket.on('feedback:new', (d) => {
+          showToast('📩 新留言：' + ((d && d.title) || ''), 'warning');
+          if (window.Notification && Notification.permission === 'granted') {
+            try { new Notification('管理后台：收到新留言', { body: ((d && d.studentId) || '') + ' · ' + ((d && d.title) || '') }); } catch (e) {}
+          }
+          if (typeof loadReportBadge === 'function') loadReportBadge();
+        });
+      } catch (e) { console.warn('实时提醒初始化失败', e); }
+    }
+    initRealtimeFeedback();
+
     checkAdmin();
     loadDashboardStats();
     loadReportBadge();
+    loadAlertChannels();
   </script>
 </body>
 </html>

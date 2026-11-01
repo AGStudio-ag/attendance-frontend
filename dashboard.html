@@ -570,6 +570,23 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
   }
   .tab-sponsor-icon .ico { fill: currentColor; stroke: none; }
   .tab-item.tab-sponsor.active .tab-sponsor-icon{ transform: translateY(-2px); }
+
+  /* 手机上悬浮"反馈"按钮要浮在底部导航之上，否则被 tabbar 盖住看不见 */
+  #feedbackFab{
+    right: 14px !important;
+    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 14px) !important;
+    width: 60px !important; height: 60px !important;
+    font-size: 12px !important;
+    z-index: 950 !important;
+    background: linear-gradient(135deg,#3b6df0,#5b8cff) !important;
+    box-shadow: 0 10px 26px rgba(59,109,240,.45) !important;
+    animation: fabPulse 2.6s ease-in-out infinite;
+  }
+  #feedbackFab span{ font-weight: 600; }
+  @keyframes fabPulse{
+    0%,100%{ box-shadow: 0 10px 26px rgba(59,109,240,.45); }
+    50%{ box-shadow: 0 10px 26px rgba(59,109,240,.45), 0 0 0 10px rgba(59,109,240,.16); }
+  }
 }
 </style>
 </head>
@@ -682,6 +699,21 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
     </header>
 
     <div class="content">
+      <!-- 全局邮箱绑定提示（推广绑定邮箱） -->
+      <div id="globalEmailBanner" class="alert alert-warning" style="display:none;margin-bottom:14px;align-items:flex-start;gap:10px;">
+        <svg class="ico" style="color:var(--amber);flex:none;margin-top:2px;"><use href="#i-mail"/></svg>
+        <div style="flex:1;min-width:0;">
+          <strong>还没绑定邮箱</strong>
+          <p style="margin:2px 0 0;">绑定邮箱后可以收到每次签到结果通知和会员到期提醒；不绑定将收不到任何邮件通知（后续可能限制未绑定用户使用部分功能）。</p>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="goPage('email')" style="flex:none;">立即绑定</button>
+        <button class="btn btn-ghost btn-sm" onclick="dismissEmailBanner()" title="今天不再提示" style="flex:none;">×</button>
+      </div>
+      <!-- 公告区（置顶） -->
+      <div id="noticeCard" class="card hidden" style="margin-bottom:14px;border-left:4px solid var(--blue);">
+        <h2 class="card-heading" id="noticeTitle"></h2>
+        <div id="noticeContent"></div>
+      </div>
       <!-- ================= 首页 ================= -->
       <div id="page-dashboard" class="page active">
         <div class="card" id="onboardingCard">
@@ -712,12 +744,41 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
           </div>
         </div>
 
-        <div class="card" style="padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <svg class="ico" style="color:var(--blue); font-size:18px;"><use href="#i-info"/></svg>
-            <p style="font-size:13px; color:var(--text-secondary); margin:0;">本学期考勤服务完全自愿，不影响账号使用。</p>
+        <div class="card" style="padding:18px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px; min-width:0;">
+            <svg class="ico" style="color:var(--amber); font-size:18px; flex:none;"><use href="#i-star"/></svg>
+            <div style="min-width:0;">
+              <p style="font-size:14px; font-weight:600; margin:0;" id="sponsorCardTitle">开通会员，更省心</p>
+              <p style="font-size:12px; color:var(--text-secondary); margin:2px 0 0;" id="sponsorCardDesc">会员每天 21:35 自动签到，可自定义签到时间，有效期至毕业。</p>
+            </div>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="goPage('buy')">查看档位</button>
+          <div style="display:flex; gap:8px; flex:none;">
+            <button class="btn btn-secondary btn-sm" onclick="goPage('buy')" id="sponsorCardBtn">去开通</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:18px 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+            <div style="min-width:0;">
+              <h2 class="card-heading" style="margin-bottom:4px"><svg class="ico" style="color:var(--green);"><use href="#i-calendar"/></svg> 每日打卡</h2>
+              <p style="font-size:13px;color:var(--text-secondary);margin:0;">每天打卡 +1 次手动签到机会，连续 7 天额外 +2 次（最多累积 99 次）。会员无需次数，可直接签到。</p>
+            </div>
+            <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+              <div style="text-align:center;"><div style="font-size:20px;font-weight:700" id="creditsCount">0</div><div style="font-size:11px;color:var(--text-secondary)">可用次数</div></div>
+              <div style="text-align:center;"><div style="font-size:20px;font-weight:700" id="streakCount">0</div><div style="font-size:11px;color:var(--text-secondary)">连续打卡(天)</div></div>
+              <button class="btn btn-primary" id="checkinBtn" onclick="doCheckin()">立即打卡</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="padding:18px 20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div style="min-width:0;">
+              <h2 class="card-heading" style="margin-bottom:4px"><svg class="ico" style="color:var(--blue);"><use href="#i-message"/></svg> 意见反馈</h2>
+              <p style="font-size:13px;color:var(--text-secondary);margin:0;">功能建议、BUG 反馈、投诉都可以在这里提，管理员会尽快处理并回复。</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="goPage('feedback')" style="flex:none;">写留言</button>
+          </div>
         </div>
 
         <div class="card">
@@ -747,11 +808,6 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
           </div>
           <svg class="ico" style="color:var(--text-tertiary);font-size:16px;"><use href="#i-chevron-right"/></svg>
         </a>
-
-        <div id="noticeCard" class="card hidden" style="border-left: 2px solid var(--blue);">
-          <h2 class="card-heading" id="noticeTitle"></h2>
-          <div id="noticeContent"></div>
-        </div>
 
         <div class="stats">
           <div class="stat"><div class="stat-num" id="statTotalSigns">0</div><div class="stat-label">累计签到</div></div>
@@ -1143,6 +1199,9 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
   </button>
 </nav>
 
+<!-- 悬浮反馈按钮 -->
+<button id="feedbackFab" onclick="goPage('feedback')" title="意见反馈" style="position:fixed;right:18px;bottom:26px;z-index:70;width:54px;height:54px;border-radius:50%;border:none;background:#3b6df0;color:#fff;font-size:11px;line-height:1.15;box-shadow:0 8px 22px rgba(15,23,42,.28);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;opacity:.95;">💬<span>反馈</span></button>
+
 <!-- ================= Sponsor Modal ================= -->
 <div class="modal-mask" id="sponsorModal">
   <div class="modal">
@@ -1180,6 +1239,18 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
     <p id="qrModalAmount" style="font-size:13px;color:var(--text-secondary);font-family:var(--mono);"></p>
     <img id="qrModalImage" src="" alt="收款码">
     <button class="btn btn-primary btn-block" onclick="closeQrModal()">关闭</button>
+  </div>
+</div>
+
+<!-- ================= Notice Modal（管理员留的站内通知） ================= -->
+<div class="modal-mask" id="noticeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeNoticeModal()">&times;</button>
+    <h2 id="noticeModalTitle">系统通知</h2>
+    <div class="modal-note" id="noticeModalBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-primary btn-block" onclick="closeNoticeModal()">我知道了</button>
+    </div>
   </div>
 </div>
 
@@ -1290,7 +1361,7 @@ function escapeAttr(s) {
 async function api(url, opts) {
   opts = opts || {};
   opts.headers = opts.headers || {};
-  opts.headers['Authorization'] = 'Bearer ' + token;
+  opts.headers['Authorization'] = 'Bearer ' + (localStorage.getItem('token') || '');
   if (opts.body && typeof opts.body === 'object') {
     opts.body = JSON.stringify(opts.body);
     opts.headers['Content-Type'] = 'application/json';
@@ -1317,7 +1388,10 @@ async function api(url, opts) {
 }
 
 function logout() {
-  localStorage.clear();
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  localStorage.removeItem('attendancePassword');
+  localStorage.removeItem('pendingInviteCode');
   location.replace('/');
 }
 
@@ -1405,23 +1479,52 @@ function dismissOnboarding() {
   localStorage.setItem('onboardingDismissed', '1');
   const card = document.getElementById('onboardingCard');
   if (card) card.classList.add('hidden');
+  markOnboardingDone();
+}
+
+// 记住"引导已处理"在账号上，换手机/清缓存也不会反复出现
+let onboardingMarking = false;
+async function markOnboardingDone() {
+  if (onboardingMarking) return;
+  if (currentUser && currentUser.onboardingDone) return;
+  onboardingMarking = true;
+  try {
+    await api('/user/onboarding', { method: 'POST', body: {} });
+    if (currentUser) currentUser.onboardingDone = true;
+    try {
+      const cached = JSON.parse(localStorage.getItem('user') || '{}') || {};
+      cached.onboardingDone = true;
+      localStorage.setItem('user', JSON.stringify(cached));
+    } catch (e) {}
+    localStorage.setItem('onboardingDismissed', '1');
+  } catch (e) { onboardingMarking = false; }
 }
 
 function renderOnboarding() {
   const card = document.getElementById('onboardingCard');
   if (!card) return;
-  if (localStorage.getItem('onboardingDismissed') === '1') { card.classList.add('hidden'); return; }
+  if ((currentUser && currentUser.onboardingDone) || localStorage.getItem('onboardingDismissed') === '1') {
+    card.classList.add('hidden');
+    return;
+  }
 
+  // 密码在登录时已经验证过，不再单列一步
   const steps = [
-    { title: '确认考勤密码', desc: '默认 Ahgydx@920，改过就填新密码', done: localStorage.getItem('pwdConfirmed') === '1', label: '去确认', action: () => goPage('profile') },
     { title: '绑定邮箱', desc: '签到成功或失败都会发邮件提醒', done: !!currentUser.emailVerified, label: '去绑定', action: () => goPage('email') },
-    { title: '手动签到一次', desc: '免费，不需要会员', done: (statsState.todaySigns || 0) > 0, label: '立即签到', action: () => { goPage('dashboard'); setTimeout(quickSign, 260); } },
-    { title: '开启自动签到', desc: '每天自动签到，需要会员或次数卡', done: !!autoSignState.enabled, label: '去开启', action: () => goPage('subscriptions') }
+    { title: '手动签到一次', desc: '免费，不需要会员', done: (statsState.todaySigns || 0) > 0, label: '立即签到', action: () => { goPage('dashboard'); setTimeout(quickSign, 260); } }
   ];
+  // 只有有效会员才需要"开启自动签到"这一步，免费用户做完前两步就自动收起
+  if (isMemberActive()) {
+    steps.push({ title: '开启自动签到', desc: '每天自动签到，会员专享', done: !!autoSignState.enabled, label: '去开启', action: () => goPage('subscriptions') });
+  }
 
   const doneCount = steps.filter(s => s.done).length;
   const total = steps.length;
-  if (doneCount === total) { card.classList.add('hidden'); return; }
+  if (doneCount === total) {
+    card.classList.add('hidden');
+    markOnboardingDone();
+    return;
+  }
   card.classList.remove('hidden');
 
   const bar = document.getElementById('onboardingBar');
@@ -1473,9 +1576,16 @@ async function loadUserInfo() {
     const daysLeft = expireDate ? Math.max(0, Math.ceil((expireDate.getTime() - Date.now()) / 86400000)) : 0;
     const headerTier = document.getElementById('headerTier');
     if (headerTier) {
-      headerTier.textContent = currentUser.isVip
-        ? (isPermanent ? `${tierDisplay} · 长期` : `${tierDisplay} · ${daysLeft}天`)
-        : '免费';
+      if (!currentUser.isVip) {
+        headerTier.textContent = '免费';
+      } else if (isPermanent) {
+        headerTier.textContent = `${tierDisplay} · 长期`;
+      } else if (expireDate && expireDate.getTime() <= Date.now()) {
+        const expiredDays = Math.max(0, Math.floor((Date.now() - expireDate.getTime()) / 86400000));
+        headerTier.textContent = `${tierDisplay} · 已过期${expiredDays > 0 ? expiredDays + '天' : '（今天）'}`;
+      } else {
+        headerTier.textContent = `${tierDisplay} · ${daysLeft}天`;
+      }
 
       headerTier.style.color = TIER_COLORS[tierKey] || '#71717a';
       headerTier.style.borderColor = TIER_COLORS[tierKey] || '#e4e4e7';
@@ -1679,9 +1789,22 @@ function canCustomSignTime() {
   return currentCanCustomTime();
 }
 
+// 是否处于有效会员期（自动签到只对会员开放，次数只用于手动签到）
+function isMemberActive() {
+  const m = currentUser && currentUser.membership;
+  if (m && typeof m.active === 'boolean') return m.active;
+  if (!currentUser || !currentUser.isVip) return false;
+  if (!currentUser.vipExpireAt) return true;
+  return new Date(currentUser.vipExpireAt).getTime() > Date.now();
+}
+
 function renderAutoSignStatus(setting) {
   const status = document.getElementById('autoSignStatus');
   if (!status) return;
+  if (!isMemberActive()) {
+    status.innerHTML = '<span class="badge badge-neutral">会员已失效</span><span style="margin-left:8px;color:var(--text-tertiary);font-size:13px;font-weight:500;">自动签到是会员权益，已自动关闭；打卡次数只能用于手动签到</span>';
+    return;
+  }
   const dayText = (setting.customDays || []).length ? setting.customDays.map(d => DAY_NAMES[d]).join('、') : '未选择日期';
   status.innerHTML = setting.enabled
     ? '<span class="badge badge-success">已开启</span><span style="margin-left:8px;color:var(--text-secondary);font-size:13px;font-weight:500;">每逢 ' + escapeHTML(dayText) + ' ' + escapeHTML(setting.signTime || '21:35') + ' 自动签到</span>'
@@ -1713,9 +1836,12 @@ function renderEmailWarning() {
   } else {
     box.innerHTML = `<div class="alert alert-warning">
       <svg class="ico" style="color:var(--amber);"><use href="#i-alert"/></svg>
-      <div><strong>未绑定邮箱</strong><p>绑定后签到状态会通过邮件通知。 <button class="btn btn-ghost btn-sm" style="text-decoration:underline;height:auto;padding:0;color:var(--amber);font-weight:600;" onclick="goPage('email')">去绑定</button></p></div>
+      <div><strong>未绑定邮箱</strong><p>绑定后签到状态和会员到期提醒都会通过邮件通知。 <button class="btn btn-ghost btn-sm" style="text-decoration:underline;height:auto;padding:0;color:var(--amber);font-weight:600;" onclick="goPage('email')">去绑定</button></p></div>
     </div>`;
   }
+  renderEmailBanner();
+  renderSponsorCard();
+  renderCheckinCard();
   ['notifyOnSuccess', 'notifyOnFailure'].forEach(id => {
     const cb = document.getElementById(id);
     if (!cb) return;
@@ -1727,6 +1853,77 @@ function renderEmailWarning() {
       }
     };
   });
+}
+
+function todayKeyBeijing() {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+  const get = t => (parts.find(p => p.type === t) || {}).value;
+  return `${get('year')}-${get('month')}-${get('day')}`;
+}
+
+function renderCheckinCard() {
+  const creditsEl = document.getElementById('creditsCount');
+  const streakEl = document.getElementById('streakCount');
+  const btn = document.getElementById('checkinBtn');
+  if (!creditsEl || !streakEl || !btn) return;
+  creditsEl.textContent = Number(currentUser.signCredits || 0);
+  streakEl.textContent = Number(currentUser.checkinStreak || 0);
+  const done = currentUser.lastCheckinDate === todayKeyBeijing();
+  btn.disabled = done;
+  btn.textContent = done ? '今日已打卡' : '立即打卡';
+}
+
+async function doCheckin() {
+  const btn = document.getElementById('checkinBtn');
+  if (btn) btn.disabled = true;
+  try {
+    const data = await api('/checkin', { method: 'POST' });
+    if (data.success) {
+      currentUser.signCredits = data.credits;
+      currentUser.checkinStreak = data.streak;
+      if (!data.already) currentUser.lastCheckinDate = todayKeyBeijing();
+      if (typeof renderCheckinCard === 'function') renderCheckinCard();
+      showToast(data.message || '打卡成功', data.already ? 'warning' : 'success');
+    }
+  } catch (e) {
+    showToast('打卡失败：' + (e.message || '网络异常'), 'error');
+  }
+  const done = currentUser.lastCheckinDate === todayKeyBeijing();
+  if (btn) btn.disabled = done;
+}
+
+function renderSponsorCard() {
+  const title = document.getElementById('sponsorCardTitle');
+  const desc = document.getElementById('sponsorCardDesc');
+  const btn = document.getElementById('sponsorCardBtn');
+  if (!title || !desc || !btn) return;
+  const isVip = !!currentUser.isVip;
+  const tierName = (typeof currentPlanName === 'function') ? currentPlanName() : '';
+  const exp = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
+  if (isVip) {
+    const expText = exp ? exp.toLocaleDateString('zh-CN') : '长期';
+    title.textContent = (tierName ? tierName + ' · ' : '') + '有效期至 ' + expText;
+    desc.textContent = '到期前 7 天会邮件提醒续费；自动签到已开启，可自定义签到时间。';
+    btn.textContent = '续费 / 升级';
+  } else {
+    title.textContent = '开通会员，更省心';
+    desc.textContent = '会员每天 21:35 自动签到，可自定义签到时间，有效期至毕业。';
+    btn.textContent = '去开通';
+  }
+}
+
+function renderEmailBanner() {
+  const el = document.getElementById('globalEmailBanner');
+  if (!el) return;
+  const dismissed = localStorage.getItem('emailBannerDismissed') === new Date().toDateString();
+  const needBind = currentUser && !currentUser.emailVerified;
+  el.style.display = needBind && !dismissed ? 'flex' : 'none';
+}
+
+function dismissEmailBanner() {
+  localStorage.setItem('emailBannerDismissed', new Date().toDateString());
+  const el = document.getElementById('globalEmailBanner');
+  if (el) el.style.display = 'none';
 }
 
 async function loadAutoSignSetting() {
@@ -1757,8 +1954,10 @@ async function loadAutoSignSetting() {
 }
 
 async function saveAutoSignSetting() {
-  if (!currentUser.isVip && !(Number(currentUser.signCredits || 0) > 0)) {
-    showToast('自动签到需要会员或次数卡', 'error'); return;
+  if (!isMemberActive()) {
+    showToast('自动签到是会员权益：你当前不是有效会员，打卡次数只能用于手动签到', 'error');
+    goPage('buy');
+    return;
   }
   const selectedDays = getSelectedAutoSignDays();
   if (selectedDays.length === 0) { showToast('请至少选择一天', 'error'); return; }
@@ -1901,6 +2100,9 @@ async function loadProfile() {
       vipText = '长期有效';
     } else if (expireDate && expireDate > new Date()) {
       vipText = '有效至 ' + expireDate.toLocaleDateString('zh-CN');
+    } else if (expireDate) {
+      const expiredDays = Math.max(0, Math.floor((Date.now() - expireDate.getTime()) / 86400000));
+      vipText = expiredDays > 0 ? `已过期 ${expiredDays} 天` : '今天已过期';
     } else {
       vipText = '已到期';
     }
@@ -1945,7 +2147,6 @@ async function updateProfile() {
     if (data.success) {
       showToast('已保存', 'success');
       document.getElementById('profileAttendancePassword').value = '';
-      localStorage.setItem('pwdConfirmed', '1');
       await loadUserInfo(); renderOnboarding();
     } else { showToast(data.message || '保存失败', 'error'); }
   } catch (e) { showToast((e && e.message) || '网络错误', 'error'); }
@@ -2412,9 +2613,49 @@ function goToSponsor() {
 function init() {
   bindWeekdayButtons();
   loadUserInfo(); loadStats(); loadActiveSubs(); loadNotice();
+  renderEmailBanner();
+  renderSponsorCard();
+  renderCheckinCard();
   setTimeout(loadVipNotice, 500);
+  setTimeout(loadUserNotices, 1200);
   renderOnboarding();
   setTimeout(showSponsorModal, 8000);
+}
+
+// ===== 站内通知：管理员撤销权益 / 金额不符等，下次打开仪表盘弹窗提示（不发邮件） =====
+let noticeQueue = [];
+async function loadUserNotices() {
+  try {
+    const res = await fetch(`${API_BASE}/notices`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+    const data = await res.json();
+    if (!data.success || !Array.isArray(data.notices) || !data.notices.length) return;
+    noticeQueue = data.notices.slice();
+    showNextNotice();
+  } catch (e) { }
+}
+function escapeNoticeText(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+}
+function showNextNotice() {
+  if (!noticeQueue.length) return;
+  const n = noticeQueue.shift();
+  const mask = document.getElementById('noticeModal');
+  const title = document.getElementById('noticeModalTitle');
+  const body = document.getElementById('noticeModalBody');
+  if (title) title.textContent = n.title || '系统通知';
+  if (body) body.innerHTML = `<p style="line-height:1.9;margin:0;">${escapeNoticeText(n.content)}</p><p style="margin:10px 0 0;font-size:12px;color:#94a3b8;">${new Date(n.createdAt || Date.now()).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`;
+  if (mask) mask.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  if (window.Notification && Notification.permission === 'granted') {
+    try { new Notification(n.title || '系统通知', { body: String(n.content || '').slice(0, 60) }); } catch (e) { }
+  }
+}
+function closeNoticeModal() {
+  const mask = document.getElementById('noticeModal');
+  if (mask) mask.classList.remove('show');
+  document.body.style.overflow = '';
+  if (noticeQueue.length) { setTimeout(showNextNotice, 200); return; }
+  fetch(`${API_BASE}/notices/clear`, { method: 'POST', headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } }).catch(() => { });
 }
 
 window.addEventListener('pagehide', () => { if (pollingTimer) { clearInterval(pollingTimer); pollingTimer = null; } });
