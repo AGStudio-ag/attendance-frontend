@@ -1338,12 +1338,20 @@
         box.innerHTML = priceNotice + '<div style="overflow-x:auto;"><table><thead><tr><th>订单号</th><th>用户</th><th>套餐</th><th>金额</th><th>状态</th><th>核对</th><th>支付备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody>' +
           data.orders.map(o => {
             const u = o.userId || {};
+            const userDeleted = !!(o.userDeleted || u.deleted);
             const canConfirm = o.reviewStatus !== 'rejected';
             const canRevoke = o.status === 'granted' && o.reviewStatus !== 'rejected';
             const confirmLabel = o.reviewStatus === 'confirmed' ? '调整套餐' : '确认到账';
+            const pendingCount = Number(o.userPendingCount || 0);
+            // TD-13：用户被物理删除时用下单快照兜底，绝不显示空白
+            const userCell = (u.studentId
+                ? escSponsor(u.studentId) + (userDeleted ? ' <span style="color:#b42318;font-size:12px;">(已删除)</span>' : '')
+                : '<span style="color:#b42318;">（用户已删除，无快照）</span>')
+              + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(u.name || '') + '</span>'
+              + (pendingCount > 1 ? '<br><span style="color:#b45309;font-size:12px;">该用户共 ' + pendingCount + ' 笔待处理</span>' : '');
             const actions = (canConfirm
                 ? (pricesReady
-                  ? '<button class="btn btn-success" style="padding:6px 10px;font-size:12px;" onclick="confirmSponsorOrder(\'' + o._id + '\',' + Number(o.amount || 0) + ')">' + confirmLabel + '</button> '
+                  ? '<button class="btn btn-success" style="padding:6px 10px;font-size:12px;" onclick="confirmSponsorOrder(\'' + o._id + '\',' + Number(o.amount || 0) + ',' + pendingCount + ')">' + confirmLabel + '</button> '
                   : '<button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;opacity:.55;cursor:not-allowed;" disabled title="套餐价目未加载，无法确认">' + confirmLabel + '（停用）</button> ')
                 : '') +
               (canRevoke ? '<button class="btn btn-danger" style="padding:6px 10px;font-size:12px;" onclick="revokeSponsorOrder(\'' + o._id + '\')">取消权益</button>' : '');
@@ -1356,7 +1364,7 @@
             const actualLine = (o.amountMismatch && o.actualAmount) ? '<br><span style="font-size:12px;color:#0891b2;">实收 ¥' + Number(o.actualAmount).toFixed(2) + '</span>' : '';
             return '<tr>' +
               '<td style="font-size:12px;">' + escSponsor(o.orderNo) + '</td>' +
-              '<td>' + escSponsor(u.studentId || '') + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(u.name || '') + '</span></td>' +
+              '<td>' + userCell + '</td>' +
               '<td>' + escSponsor(planName) + '<br><span style="color:#94a3b8;font-size:12px;">' + escSponsor(duration) + '</span>' + grantedLine + '</td>' +
               '<td>¥' + Number(o.amount || 0).toFixed(2) + actualLine + coupon + '</td>' +
               '<td>' + escSponsor(o.status) + '</td>' +
@@ -1367,7 +1375,10 @@
           }).join('') + '</tbody></table></div>';
       } catch (e) { box.innerHTML = '<p class="empty">加载失败</p>'; }
     }
-    async function confirmSponsorOrder(id, amount) {
+    async function confirmSponsorOrder(id, amount, pendingCount) {
+      // TD-12：该用户名下有多笔 pending 时先警告，避免同一笔款重复开通
+      const pending = Number(pendingCount || 0);
+      if (pending > 1 && !confirm(`⚠️ 该用户当前有 ${pending} 笔未处理订单，请确认是否为同一笔款项。\n\n建议先核对其余订单的金额与备注，再决定是否继续。`)) return;
       // 价目必须先就位：失败态直接拦住，绝不按硬编码价格引导管理员决策（TD-2）
       if (!(await requireTierMeta('sponsorOrdersTable'))) return;
       const planList = planPriceMeta();
