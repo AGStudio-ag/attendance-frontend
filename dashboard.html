@@ -2024,8 +2024,7 @@ async function loadWxNotifyStatus() {
   const box = document.getElementById('wxNotifyBox');
   if (!box) return;
   try {
-    const res = await api('/user/wxpusher/status');
-    const d = await res.json();
+    const d = await api('/user/wxpusher/status');
     if (!d.success) { box.innerHTML = '<p class="empty">' + (d.message || '状态读取失败') + '</p>'; return; }
     if (d.bound) {
       const t = d.bindTime ? new Date(d.bindTime).toLocaleString('zh-CN') : '';
@@ -2038,7 +2037,7 @@ async function loadWxNotifyStatus() {
         '<button class="btn btn-primary btn-sm" onclick="startWxBind()">绑定微信</button></div>';
     }
   } catch (e) {
-    box.innerHTML = '<p class="empty">状态读取失败</p>';
+    box.innerHTML = '<p class="empty">状态读取失败：' + (e.message || '') + ' <button class="btn btn-outline btn-sm" onclick="loadWxNotifyStatus()">重试</button></p>';
   }
 }
 
@@ -2051,8 +2050,7 @@ async function startWxBind() {
   imgBox.innerHTML = '';
   tip.textContent = '正在生成二维码…';
   try {
-    const res = await api('/user/wxpusher/qrcode');
-    const d = await res.json();
+    const d = await api('/user/wxpusher/qrcode');
     if (!d.success) { tip.textContent = d.message || '二维码生成失败'; return; }
     imgBox.innerHTML = '<img src="' + d.url + '" alt="微信绑定二维码" style="width:220px;height:220px;border-radius:10px;" />';
     tip.textContent = '请使用微信扫一扫，关注后即可接收通知（二维码 10 分钟内有效）';
@@ -2065,8 +2063,7 @@ async function startWxBind() {
 
 async function pollWxBind() {
   try {
-    const res = await api('/user/wxpusher/status');
-    const d = await res.json();
+    const d = await api('/user/wxpusher/status');
     if (d.bound) {
       closeWxQr();
       alert('✅ 微信绑定成功，之后每天会自动收到签到结果');
