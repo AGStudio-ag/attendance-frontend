@@ -174,6 +174,9 @@
         <div class="menu-item" data-page="packages">
           <i class="fas fa-tags"></i> 套餐管理
         </div>
+        <div class="menu-item" data-page="coupons">
+          <i class="fas fa-percent"></i> 优惠码
+        </div>
         <div class="menu-item" data-page="sponsor-orders">
           <i class="fas fa-hand-holding-heart"></i> 赞助订单
         </div>
@@ -389,6 +392,39 @@
           <div id="adminPackagesTable">加载中...</div>
         </div>
       </div>
+
+      <!-- ===== 优惠码管理 ===== -->
+      <div id="page-coupons" class="hidden">
+        <div class="content-card">
+          <div class="card-header">
+            <h3><i class="fas fa-percent"></i> 优惠码管理</h3>
+            <button class="btn btn-outline" onclick="loadCoupons()"><i class="fas fa-sync-alt"></i> 刷新</button>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end;">
+            <div class="form-group"><label>优惠码</label><input id="couponCodeInput" placeholder="例如 aggzsnb" autocomplete="off"></div>
+            <div class="form-group"><label>立减金额（元）</label><input id="couponDiscountInput" type="number" step="0.01" min="0.01" placeholder="5.88"></div>
+            <div class="form-group"><label>生效时间（可空）</label><input id="couponFromInput" type="datetime-local"></div>
+            <div class="form-group"><label>失效时间（可空）</label><input id="couponUntilInput" type="datetime-local"></div>
+            <div class="form-group"><label>最多可用次数（0=不限）</label><input id="couponMaxUsesInput" type="number" min="0" placeholder="0"></div>
+            <div class="form-group"><label>每人限用（0=不限）</label><input id="couponPerUserInput" type="number" min="0" placeholder="0"></div>
+            <div class="form-group"><label>备注</label><input id="couponNoteInput" placeholder="可选" autocomplete="off"></div>
+            <div class="form-group" style="display:flex;align-items:center;gap:8px;padding-bottom:10px;">
+              <label style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer;white-space:nowrap;"><input type="checkbox" id="couponActiveInput" checked> 启用</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">
+            <input type="hidden" id="couponEditId">
+            <button class="btn btn-primary" onclick="saveCoupon()"><i class="fas fa-save"></i> <span id="couponSaveLabel">保存优惠码</span></button>
+            <button class="btn btn-outline" onclick="resetCouponForm()">取消编辑</button>
+          </div>
+          <p id="couponFormHint" style="font-size:12px;color:#94a3b8;margin:8px 0 0;">新增时填优惠码；编辑时编码可改。时间留空表示长期有效。</p>
+        </div>
+        <div class="content-card">
+          <div class="card-header"><h3><i class="fas fa-list"></i> 优惠码列表</h3></div>
+          <div id="couponsTable">加载中...</div>
+        </div>
+      </div>
+
       <!-- ===== 商品管理 ===== -->
       <div id="page-market-items" class="hidden">
         <div class="content-card">
@@ -434,6 +470,7 @@
               </label>
               <button class="btn btn-outline btn-sm" onclick="editAutoReplyTemplate()"><i class="fas fa-edit"></i> 文案</button>
               <button class="btn btn-outline btn-sm" onclick="runAutoReplyNow()"><i class="fas fa-bolt"></i> 立即扫描</button>
+              <button class="btn btn-outline btn-sm" onclick="showWxSubscribers()"><i class="fas fa-users"></i> 订阅者</button>
               <button class="btn btn-outline btn-sm" onclick="loadUserFeedbacks()"><i class="fas fa-sync-alt"></i> 刷新</button>
             </div>
           </div>
@@ -840,7 +877,7 @@
 
         const titles = {
           dashboard: '仪表盘', users: '考勤用户管理', 'market-users': '交易平台用户管理', cards: '卡密管理',
-          reports: '举报管理', orders: '订单管理', 'sponsor-orders': '赞助订单', packages: '套餐管理', 'market-items': '商品管理',
+          reports: '举报管理', orders: '订单管理', 'sponsor-orders': '赞助订单', packages: '套餐管理', coupons: '优惠码管理', 'market-items': '商品管理',
           feedback: '留言管理', email: '群发邮件', 'sign-mgmt': '签到管理', settings: '系统设置'
         };
         document.getElementById('pageTitle').textContent = titles[page];
@@ -853,6 +890,7 @@
         else if (page === 'orders') loadOrders();
         else if (page === 'sponsor-orders') loadSponsorOrders();
         else if (page === 'packages') loadAdminPackages();
+        else if (page === 'coupons') loadCoupons();
         else if (page === 'market-items') loadMarketItems();
         else if (page === 'feedback') { loadFeedbacks(); loadReplySettings(); loadUserFeedbacks(); }
         else if (page === 'email') loadEmailStats();
@@ -1316,6 +1354,131 @@
     // ========== 套餐管理 ==========
     let adminPkgCache = [];
     let editingPkgId = null;
+
+    // ========== 优惠码管理 ==========
+    let couponCache = [];
+    function couponFmtDate(v) {
+      if (!v) return '长期';
+      const d = new Date(v);
+      return isNaN(d.getTime()) ? '-' : d.toLocaleString();
+    }
+    function couponStatusBadge(c) {
+      const map = {
+        active: '<span class="badge badge-success">生效中</span>',
+        inactive: '<span class="badge badge-danger">已停用</span>',
+        not_started: '<span class="badge badge-warning">未开始</span>',
+        expired: '<span class="badge badge-info">已过期</span>',
+        used_up: '<span class="badge badge-warning">已领完</span>'
+      };
+      return map[c.status] || '<span class="badge badge-warning">未知</span>';
+    }
+    async function loadCoupons() {
+      const box = document.getElementById('couponsTable');
+      if (!box) return;
+      try {
+        const res = await fetch(`${API_BASE}/admin/coupons`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) { box.innerHTML = '<p style="color:#dc3545;">加载失败</p>'; return; }
+        couponCache = data.coupons || [];
+        if (!couponCache.length) { box.innerHTML = '<p style="color:#94a3b8;padding:12px 0;">暂无优惠码，先在上方新增一个。</p>'; return; }
+        box.innerHTML = `<table><thead><tr><th>优惠码</th><th>立减</th><th>有效期</th><th>已用 / 上限</th><th>每人限用</th><th>状态</th><th>备注</th><th>操作</th></tr></thead><tbody>${couponCache.map(c => `
+          <tr>
+            <td><code style="font-family:var(--mono,monospace);font-weight:600;">${escSponsor(c.code)}</code></td>
+            <td>¥${Number(c.discount).toFixed(2)}</td>
+            <td style="font-size:12px;color:#64748b;">${couponFmtDate(c.validFrom)} ~ ${couponFmtDate(c.validUntil)}</td>
+            <td>${c.usedCount || 0} / ${Number(c.maxUses) > 0 ? c.maxUses : '不限'}</td>
+            <td>${Number(c.perUserLimit) > 0 ? c.perUserLimit : '不限'}</td>
+            <td>${couponStatusBadge(c)}</td>
+            <td style="font-size:12px;color:#64748b;max-width:160px;word-break:break-word;">${escSponsor(c.note || '')}</td>
+            <td><div class="action-buttons">
+              <button class="btn btn-outline btn-sm" onclick="editCoupon('${escSponsor(String(c._id))}')" title="编辑"><i class="fas fa-edit"></i></button>
+              <button class="btn ${c.active ? 'btn-warning' : 'btn-success'} btn-sm" onclick="toggleCoupon('${escSponsor(String(c._id))}', ${c.active ? 'false' : 'true'})" title="${c.active ? '停用' : '启用'}"><i class="fas fa-${c.active ? 'ban' : 'check'}"></i></button>
+              <button class="btn btn-danger btn-sm" onclick="deleteCoupon('${escSponsor(String(c._id))}')" title="删除"><i class="fas fa-trash"></i></button>
+            </div></td>
+          </tr>`).join('')}</tbody></table>`;
+      } catch (e) {
+        box.innerHTML = '<p style="color:#dc3545;">网络错误</p>';
+      }
+    }
+    function resetCouponForm() {
+      const idEl = document.getElementById('couponEditId');
+      if (idEl) idEl.value = '';
+      ['couponCodeInput', 'couponDiscountInput', 'couponFromInput', 'couponUntilInput', 'couponMaxUsesInput', 'couponPerUserInput', 'couponNoteInput'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      const a = document.getElementById('couponActiveInput');
+      if (a) a.checked = true;
+      const label = document.getElementById('couponSaveLabel');
+      if (label) label.textContent = '保存优惠码';
+      const hint = document.getElementById('couponFormHint');
+      if (hint) hint.textContent = '新增时填优惠码；编辑时编码可改。时间留空表示长期有效。';
+    }
+    function editCoupon(id) {
+      const c = couponCache.find(x => String(x._id) === String(id));
+      if (!c) return;
+      document.getElementById('couponEditId').value = String(c._id);
+      document.getElementById('couponCodeInput').value = c.code || '';
+      document.getElementById('couponDiscountInput').value = c.discount;
+      document.getElementById('couponFromInput').value = toLocalInput(c.validFrom);
+      document.getElementById('couponUntilInput').value = toLocalInput(c.validUntil);
+      document.getElementById('couponMaxUsesInput').value = c.maxUses || 0;
+      document.getElementById('couponPerUserInput').value = c.perUserLimit || 0;
+      document.getElementById('couponNoteInput').value = c.note || '';
+      document.getElementById('couponActiveInput').checked = c.active !== false;
+      document.getElementById('couponSaveLabel').textContent = '保存修改';
+      document.getElementById('couponFormHint').textContent = '正在编辑：' + c.code;
+      document.getElementById('couponCodeInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    async function saveCoupon() {
+      const id = (document.getElementById('couponEditId') || {}).value || '';
+      const body = {
+        code: ((document.getElementById('couponCodeInput') || {}).value || '').trim(),
+        discount: Number((document.getElementById('couponDiscountInput') || {}).value || 0),
+        validFrom: (document.getElementById('couponFromInput') || {}).value || '',
+        validUntil: (document.getElementById('couponUntilInput') || {}).value || '',
+        maxUses: Number((document.getElementById('couponMaxUsesInput') || {}).value || 0),
+        perUserLimit: Number((document.getElementById('couponPerUserInput') || {}).value || 0),
+        note: (document.getElementById('couponNoteInput') || {}).value || '',
+        active: !!(document.getElementById('couponActiveInput') || {}).checked
+      };
+      if (!body.code) { showToast('请输入优惠码', 'error'); return; }
+      if (!(body.discount > 0)) { showToast('请输入立减金额', 'error'); return; }
+      try {
+        const res = await fetch(`${API_BASE}/admin/coupons${id ? '/' + id : ''}`, {
+          method: id ? 'PUT' : 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (data.success) { showToast(data.message || '已保存', 'success'); resetCouponForm(); loadCoupons(); }
+        else showToast(data.message || '保存失败', 'error');
+      } catch (e) { showToast('网络错误', 'error'); }
+    }
+    async function toggleCoupon(id, active) {
+      try {
+        const res = await fetch(`${API_BASE}/admin/coupons/${id}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: !!active })
+        });
+        const data = await res.json();
+        if (data.success) { showToast(active ? '已启用' : '已停用', 'success'); loadCoupons(); }
+        else showToast(data.message || '操作失败', 'error');
+      } catch (e) { showToast('网络错误', 'error'); }
+    }
+    async function deleteCoupon(id) {
+      if (!confirm('确定删除这个优惠码？已产生的订单不受影响。')) return;
+      try {
+        const res = await fetch(`${API_BASE}/admin/coupons/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` }
+        });
+        const data = await res.json();
+        if (data.success) { showToast('已删除', 'success'); loadCoupons(); }
+        else showToast(data.message || '删除失败', 'error');
+      } catch (e) { showToast('网络错误', 'error'); }
+    }
 
     async function loadAdminPackages() {
       const box = document.getElementById('adminPackagesTable');
@@ -1913,6 +2076,19 @@
         if (pg) pg.innerHTML = Array.from({ length: totalPages }, (_, i) =>
           `<button class="btn ${i + 1 === page ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="loadUserFeedbacks(${i + 1})">${i + 1}</button>`).join('');
       } catch (e) {}
+    }
+
+    // 查看当前 AppToken 的订阅者（排查“关注了但收不到”）
+    async function showWxSubscribers() {
+      try {
+        const res = await fetch(`${API_BASE}/admin/wx-subscribers`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` } });
+        const data = await res.json();
+        if (!data.success) { alert(data.message || '查询失败'); return; }
+        const lines = (data.subscribers || []).map((s, i) =>
+          `${i + 1}. ${s.studentId ? '学号 ' + s.studentId + (s.name ? '（' + s.name + '）' : '') : '未绑定账号'}  ${s.uid}${s.createTime ? '  ' + new Date(s.createTime).toLocaleString() : ''}`
+        );
+        alert(`当前应用订阅者（${data.total}）：\n\n` + (lines.join('\n') || '无'));
+      } catch (e) { alert('查询失败：' + e.message); }
     }
 
     async function replyUserFeedback(id) {
