@@ -1349,6 +1349,13 @@ function currentPlanName() {
   return TIER_NAMES[currentUser.vipTier] || (currentUser.isVip ? '会员' : '免费');
 }
 
+// 1970-01-01（epoch 0）表示「从未开通会员」：一律视为无到期时间，避免显示 1970/1/1
+function parseVipExpire(v) {
+  if (!v) return null;
+  const d = new Date(v);
+  return (isNaN(d.getTime()) || d.getTime() <= 0) ? null : d;
+}
+
 function currentCanCustomTime() {
   if (!currentUser) return false;
   if (typeof currentUser.canCustomTime === 'boolean') return currentUser.canCustomTime && !!currentUser.isVip;
@@ -1604,7 +1611,7 @@ async function loadUserInfo() {
 
     const tierKey = currentUser.vipTier || 'FREE';
     const tierDisplay = currentPlanName();
-    const expireDate = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
+    const expireDate = parseVipExpire(currentUser.vipExpireAt);
     const isPermanent = !!currentUser.isVip && !expireDate;
 
     const daysLeft = expireDate ? Math.max(0, Math.ceil((expireDate.getTime() - Date.now()) / 86400000)) : 0;
@@ -1918,7 +1925,7 @@ function renderSponsorCard() {
   if (!title || !desc || !btn) return;
   const isVip = !!currentUser.isVip;
   const tierName = (typeof currentPlanName === 'function') ? currentPlanName() : '';
-  const exp = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
+  const exp = parseVipExpire(currentUser.vipExpireAt);
   if (isVip) {
     const expText = exp ? exp.toLocaleDateString('zh-CN') : '长期';
     title.textContent = (tierName ? tierName + ' · ' : '') + '有效期至 ' + expText;
@@ -2223,7 +2230,7 @@ async function loadProfile() {
   const tierName = currentPlanName();
 
   let vipText = '未开通会员';
-  const expireDate = currentUser.vipExpireAt ? new Date(currentUser.vipExpireAt) : null;
+  const expireDate = parseVipExpire(currentUser.vipExpireAt);
   const isPermanent = !!currentUser.isVip && !expireDate;
 
   if (currentUser.isVip) {
