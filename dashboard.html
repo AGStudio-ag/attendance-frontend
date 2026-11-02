@@ -1977,6 +1977,7 @@ async function saveAutoSignSetting() {
    ============================================================ */
 // ===== 签到结果通知设置（微信/邮件 × 仅失败/总是，HANDOFF §16）=====
 let wxPollTimer = null;
+let notifyAvailable = { wechat: false, email: false };
 
 async function loadNotifySettings() {
   const box = document.getElementById('notifySettingsBox');
@@ -1997,6 +1998,8 @@ function renderNotifySettings(d) {
   const s = d.settings || {};
   const ch = Array.isArray(s.channels) ? s.channels : [];
   const avail = d.available || {};
+  notifyAvailable = avail;
+  const hasAnyChannel = !!(avail.wechat || avail.email);
   const level = s.level || 'failure_only';
   const wxOn = avail.wechat && ch.indexOf('wechat') >= 0;
   const mailOn = avail.email && ch.indexOf('email') >= 0;
@@ -2020,8 +2023,9 @@ function renderNotifySettings(d) {
     '<div style="margin-top:18px;">' +
       '<strong style="font-size:14px;">什么时候通知</strong>' +
       '<p style="font-size:12px;color:var(--text-tertiary);margin:4px 0 10px;">默认只在失败时通知，成功不打扰。</p>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:8px;cursor:pointer;"><input type="radio" name="notifyLevel" value="failure_only" ' + (level === 'failure_only' ? 'checked' : '') + '> 仅失败时通知</label>' +
-      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="radio" name="notifyLevel" value="always" ' + (level === 'always' ? 'checked' : '') + '> 成功和失败都通知</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:8px;cursor:pointer;"><input type="radio" name="notifyLevel" value="failure_only" ' + (level === 'failure_only' ? 'checked' : '') + (!hasAnyChannel ? ' disabled' : '') + '> 仅失败时通知</label>' +
+      '<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="radio" name="notifyLevel" value="always" ' + (level === 'always' ? 'checked' : '') + (!hasAnyChannel ? ' disabled' : '') + '> 成功和失败都通知</label>' +
+      (hasAnyChannel ? '' : '<p style="font-size:12px;color:var(--amber);margin-top:10px;">请先绑定微信或验证邮箱，才能开启签到通知。</p>') +
     '</div>' +
     (s.configured ? '' : '<p style="font-size:12px;color:var(--text-tertiary);margin-top:12px;">当前沿用默认设置；保存后会记住你的选择。</p>');
 
@@ -2030,6 +2034,10 @@ function renderNotifySettings(d) {
 }
 
 async function saveNotifySettings() {
+  if (!(notifyAvailable.wechat || notifyAvailable.email)) {
+    showToast('请先绑定微信或验证邮箱，才能开启签到通知', 'error');
+    return;
+  }
   const channels = [];
   const wx = document.getElementById('ncWechat');
   const mail = document.getElementById('ncEmail');
