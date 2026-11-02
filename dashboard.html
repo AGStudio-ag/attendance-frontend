@@ -588,6 +588,16 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
     50%{ box-shadow: 0 10px 26px rgba(59,109,240,.45), 0 0 0 10px rgba(59,109,240,.16); }
   }
 }
+.feedback-help { background: var(--surface-hover); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 18px; overflow-wrap: break-word; font-size: 13px; line-height: 1.8; color: var(--text-secondary); }
+.feedback-help__title { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.feedback-help__intro { margin: 0 0 10px; }
+.feedback-help__block { margin: 0 0 10px; }
+.feedback-help__block:last-child { margin-bottom: 0; }
+.feedback-help__label { margin: 0 0 4px; font-weight: 600; color: var(--text-primary); }
+.feedback-help__steps, .feedback-help__notes { margin: 0 0 8px; padding-left: 20px; }
+.feedback-help__steps li, .feedback-help__notes li { margin: 0 0 4px; }
+.feedback-help__notes { list-style: none; padding-left: 14px; }
+.feedback-help__block--warn .feedback-help__warn { margin: 0; font-size: 12px; color: var(--text-tertiary); }
 </style>
 </head>
 <body>
@@ -1093,20 +1103,26 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
           <h2 class="card-heading"><svg class="ico" style="color:var(--green);"><use href="#i-pen"/></svg> 提交反馈</h2>
 
           <!-- 反馈渠道提示：站内留言 + 微信上行消息 + QQ 群（不单独做卡片，避免冗余） -->
-          <div id="feedbackHelp" style="background:var(--surface-hover);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:18px;overflow-wrap:anywhere;">
-            <p style="font-size:14px;font-weight:600;margin:0 0 6px;">💡 遇到问题需要反馈？</p>
-            <p style="font-size:13px;color:var(--text-secondary);margin:0 0 10px;line-height:1.8;">可以直接在下方留言，或者：</p>
-            <div style="font-size:13px;line-height:1.9;color:var(--text-secondary);">
-              <p style="margin:0 0 4px;">📱 <strong style="color:var(--text-primary);">微信直达</strong>（需先绑定微信）</p>
-              <p style="margin:0 0 4px;">① 在「自动签到」页点「绑定微信」，用微信扫码关注服务号 <strong style="color:var(--text-primary);">WxPusher</strong>（绑定就是关注它）；</p>
-              <p style="margin:0 0 4px;">② 打开 WxPusher 服务号的对话框，直接发送你的问题即可（<strong style="color:var(--text-primary);">不用加 #145060</strong>）：</p>
-              <p style="margin:0 0 4px;padding-left:14px;">· 安卓：直接发送，管理员会实时收到；</p>
-              <p style="margin:0 0 4px;padding-left:14px;">· 苹果：发送后如果提示选择应用，请选择「<strong style="color:var(--text-primary);">AGbot</strong>」（不要选「官方极简」）。</p>
-              <p style="margin:0 0 10px;font-size:12px;color:var(--text-tertiary);">管理员回复会发到 WxPusher APP（微信已暂停下发），建议安装 APP 查看。</p>
-              <p style="margin:0;">👥 <strong style="color:var(--text-primary);">QQ 群求助</strong>：扫描下方二维码加入官方交流群，获取人工帮助。</p>
-              <img src="./qq_group_qr.png" alt="QQ 群二维码" loading="lazy" style="display:block;width:100%;max-width:150px;height:auto;margin-top:10px;border-radius:10px;border:1px solid var(--border);">
+          <section id="feedbackHelp" class="feedback-help" aria-labelledby="feedbackHelpTitle">
+            <p class="feedback-help__title" id="feedbackHelpTitle"><span aria-hidden="true">💡</span> 遇到问题需要反馈？</p>
+            <p class="feedback-help__intro">可以直接在下方留言，或者通过以下方式联系：</p>
+            <div class="feedback-help__block">
+              <p class="feedback-help__label"><span aria-hidden="true">📱</span> 微信直达</p>
+              <ol class="feedback-help__steps">
+                <li>在「自动签到」页点击「绑定微信」，用微信扫码关注服务号 <strong>WxPusher</strong>。</li>
+                <li>打开 WxPusher 服务号的对话框，直接发送你的问题，管理员会<strong>实时收到</strong>。</li>
+              </ol>
+              <ul class="feedback-help__notes">
+                <li>安卓：直接发送即可。</li>
+                <li>苹果：若弹出应用选择，请选「<strong>AGbot</strong>」，不要选「官方极简」。</li>
+              </ul>
             </div>
-          </div>
+            <div class="feedback-help__block feedback-help__block--warn">
+              <p class="feedback-help__label"><span aria-hidden="true">⚠️</span> 想实时收到管理员回复？</p>
+              <p class="feedback-help__warn">微信已暂停下发消息，请下载 <strong>WxPusher APP</strong> 并登录绑定，才能收到回复通知。</p>
+            </div>
+            <p class="feedback-help__block"><span aria-hidden="true">👥</span> <strong>QQ 群求助</strong>：扫描本页下方的官方群二维码，加入交流群获取人工帮助。</p>
+          </section>
 
           <div class="field">
             <label>类型</label>
