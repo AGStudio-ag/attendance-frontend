@@ -308,19 +308,69 @@ body.dark .hero{ background: #111; border-color: #333; }
 .stat-label{ font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 
 /* ============================================================
-   Onboarding
+   Tour · 新手漫游引导
    ============================================================ */
-.onboard-progress{ height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; margin: var(--s-3) 0 var(--s-2); }
-.onboard-bar{ height: 100%; width: 0; background: var(--blue); transition: width .4s ease; }
-.onboard-meta{ font-size: 12px; color: var(--text-tertiary); margin-bottom: var(--s-4); font-family: var(--mono);}
-.onboard-step{ display: flex; align-items: center; gap: 16px; padding: var(--s-3) 0; border-bottom: 1px solid var(--border); }
-.onboard-step:last-child{border-bottom:0;padding-bottom:0}
-.step-dot{ width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); flex: 0 0 auto; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 500; color: var(--text-tertiary); }
-.onboard-step.done .step-dot{ background: var(--green); border-color: var(--green); color: #fff; }
-.step-body{flex:1;min-width:0}
-.step-body strong{ display: block; font-size: 14px; font-weight: 600; }
-.step-body p{ font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
-.step-done-text{ font-size: 12px; font-weight: 500; color: var(--green); font-family: var(--mono); }
+.tour-root{ position:fixed; inset:0; z-index:10020; display:none; }
+.tour-root.is-open{ display:block; }
+.tour-mask{ position:absolute; inset:0; background:transparent; }
+.tour-root.is-centered .tour-mask{ background:rgba(9,9,11,.55); }
+body.dark .tour-root.is-centered .tour-mask{ background:rgba(0,0,0,.72); }
+.tour-spot{
+  position:absolute; left:0; top:0; width:0; height:0; pointer-events:none;
+  border:2px solid var(--blue); border-radius:12px;
+  box-shadow:0 0 0 9999px rgba(9,9,11,.58), 0 0 0 4px rgba(37,99,235,.18);
+  transition:left .28s cubic-bezier(.22,1,.36,1), top .28s cubic-bezier(.22,1,.36,1),
+             width .28s cubic-bezier(.22,1,.36,1), height .28s cubic-bezier(.22,1,.36,1), opacity .2s;
+}
+body.dark .tour-spot{ box-shadow:0 0 0 9999px rgba(0,0,0,.7), 0 0 0 4px rgba(96,165,250,.2); }
+.tour-spot.is-hidden{ opacity:0; }
+.tour-pop{
+  position:absolute; left:0; top:0; width:min(320px, calc(100vw - 24px));
+  background:var(--surface); color:var(--text-primary);
+  border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:18px 18px 14px; box-shadow:0 16px 48px -12px rgba(0,0,0,.4);
+  transition:left .28s cubic-bezier(.22,1,.36,1), top .28s cubic-bezier(.22,1,.36,1);
+}
+body.dark .tour-pop{ box-shadow:0 16px 48px -12px rgba(0,0,0,.85); }
+.tour-root.is-centered .tour-pop{ left:50%; top:50%; transform:translate(-50%,-50%); transition:none; }
+.tour-pop__head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.tour-pop__step{ font-family:var(--mono); font-size:11px; color:var(--text-tertiary); letter-spacing:.04em; }
+.tour-pop__close{
+  width:24px; height:24px; border:none; border-radius:50%; background:var(--bg);
+  color:var(--text-secondary); font-size:18px; line-height:1; display:flex; align-items:center; justify-content:center;
+}
+.tour-pop__close:hover{ background:var(--surface-hover); color:var(--text-primary); }
+.tour-pop h3{ font-size:16px; font-weight:600; letter-spacing:-.01em; margin-bottom:6px; }
+.tour-pop p{ font-size:13px; line-height:1.7; color:var(--text-secondary); }
+.tour-dots{ display:flex; align-items:center; gap:6px; margin:14px 0; }
+.tour-dot{ width:6px; height:6px; border-radius:99px; background:var(--border-dark); transition:all .2s; }
+.tour-dot.is-active{ width:18px; background:var(--blue); }
+.tour-pop__foot{ display:flex; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid var(--border); padding-top:12px; }
+.tour-pop__foot .btn{ min-width:64px; }
+.tour-pop__foot .btn:focus-visible, .tour-pop__close:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce){
+  .tour-spot, .tour-pop, .tour-dot{ transition:none; }
+}
+
+/* 悬浮反馈按钮 */
+.feedback-fab{
+  position:fixed; right:18px; bottom:26px; z-index:70;
+  width:54px; height:54px; border-radius:50%; border:none;
+  background:var(--blue); color:#fff; font-size:11px; line-height:1.15;
+  box-shadow:0 8px 22px rgba(15,23,42,.28); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  opacity:.95; transition:transform .15s, opacity .15s;
+}
+.feedback-fab:hover{ transform:translateY(-2px); opacity:1; }
+.feedback-fab .ico{ font-size:18px; }
+.feedback-fab span{ font-weight:600; }
+
+.qq-tile{
+  width:36px; height:36px; border-radius:var(--radius-sm); flex:none;
+  background:var(--blue-subtle); color:var(--blue);
+  display:flex; align-items:center; justify-content:center; font-size:18px;
+}
+body.dark .qq-tile, body.dark .qq-ico{ color:#7dd3fc; }
 
 /* ============================================================
    Alert
@@ -527,6 +577,9 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
 .qr-modal-card h3{ font-size:16px; font-weight: 600; margin-bottom:8px; }
 .qr-modal-card img{ width:min(260px,70vw); aspect-ratio: 1; object-fit:contain; border-radius:var(--radius-sm); border:1px solid var(--border); margin:16px auto; display:block; }
 
+/* 桌面端不显示底部导航（只在 <=820px 由下方媒体查询开启） */
+.tabbar{ display:none; }
+
 /* ============================================================
    Mobile
    ============================================================ */
@@ -572,17 +625,14 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
   .tab-item.tab-sponsor.active .tab-sponsor-icon{ transform: translateY(-2px); }
 
   /* 手机上悬浮"反馈"按钮要浮在底部导航之上，否则被 tabbar 盖住看不见 */
-  #feedbackFab{
-    right: 14px !important;
-    bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 14px) !important;
-    width: 60px !important; height: 60px !important;
-    font-size: 12px !important;
-    z-index: 950 !important;
-    background: linear-gradient(135deg,#3b6df0,#5b8cff) !important;
-    box-shadow: 0 10px 26px rgba(59,109,240,.45) !important;
-    animation: fabPulse 2.6s ease-in-out infinite;
+  .feedback-fab{
+    right:14px;
+    bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 14px);
+    width:60px; height:60px; font-size:12px; z-index:950;
+    background:linear-gradient(135deg,#3b6df0,#5b8cff);
+    box-shadow:0 10px 26px rgba(59,109,240,.45);
+    animation:fabPulse 2.6s ease-in-out infinite;
   }
-  #feedbackFab span{ font-weight: 600; }
   @keyframes fabPulse{
     0%,100%{ box-shadow: 0 10px 26px rgba(59,109,240,.45); }
     50%{ box-shadow: 0 10px 26px rgba(59,109,240,.45), 0 0 0 10px rgba(59,109,240,.16); }
@@ -716,16 +766,6 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
       </div>
       <!-- ================= 首页 ================= -->
       <div id="page-dashboard" class="page active">
-        <div class="card" id="onboardingCard">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <h2 class="card-heading" style="margin-bottom:0"><svg class="ico" style="color:var(--amber);"><use href="#i-star"/></svg> 新手上手</h2>
-            <button class="btn btn-ghost btn-sm" onclick="dismissOnboarding()">跳过</button>
-          </div>
-          <div class="onboard-progress"><div class="onboard-bar" id="onboardingBar"></div></div>
-          <p class="onboard-meta" id="onboardingCount">0 / 4 已完成</p>
-          <div id="onboardingSteps"></div>
-        </div>
-
         <div id="vipNoticeBanner"></div>
 
         <div class="hero">
@@ -757,7 +797,7 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
           </div>
         </div>
 
-        <div class="card" style="padding:18px 20px;">
+        <div class="card" id="checkinCard" style="padding:18px 20px;">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
             <div style="min-width:0;">
               <h2 class="card-heading" style="margin-bottom:4px"><svg class="ico" style="color:var(--green);"><use href="#i-calendar"/></svg> 每日打卡</h2>
@@ -799,7 +839,7 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
         </div>
 
         <a class="card" href="https://pd.qq.com/s/9fkh0w8xw" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:16px;padding:16px;text-decoration:none;transition:all .15s;">
-          <div style="width:36px;height:36px;border-radius:var(--radius-sm);background:#e0f2fe;color:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:18px;">
+          <div class="qq-tile">
             <svg class="ico" style="stroke-width:2;"><use href="#i-qq"/></svg>
           </div>
           <div style="flex:1;min-width:0">
@@ -1052,11 +1092,17 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
               <small>校园闲置交易</small>
             </a>
             <a class="more-item" href="https://pd.qq.com/s/9fkh0w8xw" target="_blank" rel="noopener">
-              <svg class="ico" style="color:#0ea5e9;"><use href="#i-qq"/></svg>
+              <svg class="ico qq-ico" style="color:var(--blue);"><use href="#i-qq"/></svg>
               <span>QQ 频道</span>
               <small>交流与提醒</small>
             </a>
           </div>
+        </div>
+
+        <div class="card" style="margin-top:16px;">
+          <h2 class="card-heading"><svg class="ico" style="color:var(--text-secondary);"><use href="#i-info"/></svg> 帮助</h2>
+          <p style="font-size:13px;color:var(--text-secondary);margin:0 0 12px;">第一次使用？跟着引导快速认识签到、打卡和自动签到的入口。</p>
+          <button class="btn btn-secondary btn-sm" onclick="startTourReplay()">重新查看新手引导</button>
         </div>
       </div>
 
@@ -1234,7 +1280,9 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
 </nav>
 
 <!-- 悬浮反馈按钮 -->
-<button id="feedbackFab" onclick="goPage('feedback')" title="意见反馈" style="position:fixed;right:18px;bottom:26px;z-index:70;width:54px;height:54px;border-radius:50%;border:none;background:#3b6df0;color:#fff;font-size:11px;line-height:1.15;box-shadow:0 8px 22px rgba(15,23,42,.28);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;opacity:.95;">💬<span>反馈</span></button>
+<button id="feedbackFab" class="feedback-fab" onclick="goPage('feedback')" title="意见反馈" aria-label="意见反馈">
+  <svg class="ico"><use href="#i-message"/></svg><span>反馈</span>
+</button>
 
 <!-- ================= Sponsor Modal ================= -->
 <div class="modal-mask" id="sponsorModal">
@@ -1289,6 +1337,28 @@ body.dark .modal-mask { background:rgba(0,0,0,.8); }
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ================= Tour · 新手漫游引导 ================= -->
+<div class="tour-root" id="tourRoot" aria-hidden="true">
+  <div class="tour-mask" id="tourMask"></div>
+  <div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-pop" id="tourPop" role="dialog" aria-modal="true" aria-labelledby="tourTitle" aria-describedby="tourDesc">
+    <div class="tour-pop__head">
+      <span class="tour-pop__step" id="tourStepLabel"></span>
+      <button type="button" class="tour-pop__close" id="tourClose" aria-label="关闭引导">&times;</button>
+    </div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourDesc"></p>
+    <div class="tour-dots" id="tourDots" aria-hidden="true"></div>
+    <div class="tour-pop__foot">
+      <button type="button" class="btn btn-ghost btn-sm" id="tourSkip">跳过</button>
+      <div style="display:flex;gap:8px">
+        <button type="button" class="btn btn-secondary btn-sm" id="tourPrev">上一步</button>
+        <button type="button" class="btn btn-primary btn-sm" id="tourNext">下一步</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ============================================================
@@ -1514,16 +1584,21 @@ if (document.startViewTransition) { document.documentElement.classList.add('has-
 applyTheme(localStorage.getItem('dashboardTheme') || 'light');
 
 /* ============================================================
-   Onboarding
+   Tour · 新手漫游引导
    ============================================================ */
-function dismissOnboarding() {
-  localStorage.setItem('onboardingDismissed', '1');
-  const card = document.getElementById('onboardingCard');
-  if (card) card.classList.add('hidden');
-  markOnboardingDone();
-}
+const TOUR_DISMISSED_KEY = 'onboardingDismissed';
 
-// 记住"引导已处理"在账号上，换手机/清缓存也不会反复出现
+let tourSteps = [];
+let tourIndex = 0;
+let tourActive = false;
+let tourReplay = false;        // 手动重看不写"已完成"
+let tourAutoScheduled = false;
+let tourReturnPage = 'dashboard';
+let tourLastFocus = null;
+let tourRaf = 0;
+let tourDeferred = [];
+
+// 沿用原有的账号标记：换设备 / 清缓存也不会反复弹出
 let onboardingMarking = false;
 async function markOnboardingDone() {
   if (onboardingMarking) return;
@@ -1537,61 +1612,215 @@ async function markOnboardingDone() {
       cached.onboardingDone = true;
       localStorage.setItem('user', JSON.stringify(cached));
     } catch (e) {}
-    localStorage.setItem('onboardingDismissed', '1');
+    localStorage.setItem(TOUR_DISMISSED_KEY, '1');
   } catch (e) { onboardingMarking = false; }
 }
 
-function renderOnboarding() {
-  const card = document.getElementById('onboardingCard');
-  if (!card) return;
-  if ((currentUser && currentUser.onboardingDone) || localStorage.getItem('onboardingDismissed') === '1') {
-    card.classList.add('hidden');
-    return;
-  }
+function dismissOnboarding() { closeTour(); }
 
-  // 密码在登录时已经验证过，不再单列一步
-  const steps = [
-    { title: '绑定邮箱', desc: '签到成功或失败都会发邮件提醒', done: !!currentUser.emailVerified, label: '去绑定', action: () => goPage('email') },
-    { title: '手动签到一次', desc: '免费，不需要会员', done: (statsState.todaySigns || 0) > 0, label: '立即签到', action: () => { goPage('dashboard'); setTimeout(quickSign, 260); } }
+function tourBuildSteps() {
+  return [
+    { title: '欢迎使用 AG 智能考勤',
+      desc: '花半分钟认识一下控制面板：签到、打卡、自动签到都在哪儿。随时可以跳过。' },
+    { title: '手动签到',
+      desc: '点这里立刻签到一次，免费、不需要会员，结果会记录到「记录」页。',
+      page: 'dashboard', targets: ['#quickSignBtn'] },
+    { title: '每日打卡攒次数',
+      desc: '每天打卡 +1 次手动签到机会，连续 7 天再送 2 次；会员无需次数也能签到。',
+      page: 'dashboard', targets: ['#checkinCard'] },
+    { title: '自动签到',
+      desc: '会员在这里选好日期和时间，系统每天自动签到（默认 21:35）。',
+      page: 'dashboard', targets: ['.side-item[data-nav="subscriptions"]', '.tab-item[data-tab="subscriptions"]'] },
+    { title: '绑定邮箱',
+      desc: '签到成功或失败都能收到邮件提醒，会员到期也会提前通知。',
+      page: 'more', targets: ['.side-item[data-nav="email"]', '.more-item[data-nav="email"]'] },
+    { title: '开始使用吧',
+      desc: '引导不会再来打扰；想重看随时到「更多 → 重新查看新手引导」。' }
   ];
-  // 只有有效会员才需要"开启自动签到"这一步，免费用户做完前两步就自动收起
-  if (isMemberActive()) {
-    steps.push({ title: '开启自动签到', desc: '每天自动签到，会员专享', done: !!autoSignState.enabled, label: '去开启', action: () => goPage('subscriptions') });
-  }
+}
 
-  const doneCount = steps.filter(s => s.done).length;
-  const total = steps.length;
-  if (doneCount === total) {
-    card.classList.add('hidden');
-    markOnboardingDone();
+function tourPickTarget(step) {
+  if (!step || !step.targets) return null;
+  for (const sel of step.targets) {
+    const el = document.querySelector(sel);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    if (r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none') return el;
+  }
+  return null;
+}
+
+function tourPosition() {
+  if (!tourActive) return;
+  const root = document.getElementById('tourRoot');
+  const spot = document.getElementById('tourSpot');
+  const pop = document.getElementById('tourPop');
+  if (!root || !spot || !pop) return;
+
+  const target = tourPickTarget(tourSteps[tourIndex]);
+  const centered = !target;
+  root.classList.toggle('is-centered', centered);
+  spot.classList.toggle('is-hidden', centered);
+  if (centered) {
+    pop.style.left = '';
+    pop.style.top = '';
     return;
   }
-  card.classList.remove('hidden');
 
-  const bar = document.getElementById('onboardingBar');
-  const count = document.getElementById('onboardingCount');
-  if (bar) bar.style.width = (doneCount / total * 100) + '%';
-  if (count) count.textContent = doneCount + ' / ' + total + ' 已完成';
+  const r = target.getBoundingClientRect();
+  // 目标不在可视区时先滚进来，scroll 事件会再次触发定位
+  if (r.top < 72 || r.bottom > window.innerHeight - 80) {
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
 
-  const box = document.getElementById('onboardingSteps');
-  if (!box) return;
+  const pad = 6;
+  const left = Math.max(4, r.left - pad);
+  const top = Math.max(4, r.top - pad);
+  const width = Math.max(0, Math.min(window.innerWidth - left - 4, r.width + pad * 2));
+  const height = Math.max(0, Math.min(window.innerHeight - top - 4, r.height + pad * 2));
+  spot.style.left = left + 'px';
+  spot.style.top = top + 'px';
+  spot.style.width = width + 'px';
+  spot.style.height = height + 'px';
 
-  box.innerHTML = steps.map((s, i) => {
-    const action = s.done ? '<span class="step-done-text">已完成</span>' : `<button class="btn btn-secondary btn-sm" data-step="${i}">${escapeHTML(s.label)}</button>`;
-    return `<div class="onboard-step ${s.done ? 'done' : ''}">
-      <div class="step-dot">${s.done ? '<svg class="ico" style="width:14px;height:14px;stroke-width:2;"><use href="#i-check"/></svg>' : (i + 1)}</div>
-      <div class="step-body"><strong>${escapeHTML(s.title)}</strong><p>${escapeHTML(s.desc)}</p></div>
-      ${action}
-    </div>`;
-  }).join('');
-
-  box.querySelectorAll('[data-step]').forEach(btn => {
-    btn.onclick = () => {
-      const step = steps[Number(btn.dataset.step)];
-      if (step && typeof step.action === 'function') step.action();
-    };
-  });
+  const pw = pop.offsetWidth;
+  const ph = pop.offsetHeight;
+  const gap = 14;
+  let popTop;
+  if (top + height + gap + ph <= window.innerHeight - 8) popTop = top + height + gap;
+  else if (top - gap - ph >= 8) popTop = top - gap - ph;
+  else popTop = Math.max(8, Math.min(window.innerHeight - ph - 8, top + height / 2 - ph / 2));
+  const popLeft = Math.max(12, Math.min(window.innerWidth - pw - 12, r.left + r.width / 2 - pw / 2));
+  pop.style.left = popLeft + 'px';
+  pop.style.top = popTop + 'px';
 }
+
+function tourRender() {
+  const step = tourSteps[tourIndex];
+  if (!step) return;
+  if (step.page) goPage(step.page);
+
+  const root = document.getElementById('tourRoot');
+  if (root) root.classList.toggle('is-centered', !step.targets);
+
+  const setText = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+  setText('tourTitle', step.title);
+  setText('tourDesc', step.desc);
+  setText('tourStepLabel', (tourIndex + 1) + ' / ' + tourSteps.length);
+  setText('tourNext', tourIndex === tourSteps.length - 1 ? '完成' : '下一步');
+
+  const dots = document.getElementById('tourDots');
+  if (dots) dots.innerHTML = tourSteps.map((_, i) =>
+    `<span class="tour-dot${i === tourIndex ? ' is-active' : ''}"></span>`).join('');
+  const prev = document.getElementById('tourPrev');
+  if (prev) prev.style.visibility = tourIndex === 0 ? 'hidden' : 'visible';
+
+  requestAnimationFrame(tourPosition);
+}
+
+function nextTourStep() {
+  if (!tourActive) return;
+  if (tourIndex >= tourSteps.length - 1) { closeTour(); return; }
+  tourIndex++;
+  tourRender();
+}
+
+function prevTourStep() {
+  if (!tourActive || tourIndex === 0) return;
+  tourIndex--;
+  tourRender();
+}
+
+function openTour(opts) {
+  opts = opts || {};
+  if (tourActive) return;
+  const root = document.getElementById('tourRoot');
+  if (!root) return;
+  tourReplay = !!opts.replay;
+  const activePage = document.querySelector('.page.active');
+  tourReturnPage = activePage ? activePage.id.replace(/^page-/, '') : 'dashboard';
+  tourSteps = tourBuildSteps();
+  tourIndex = 0;
+  tourActive = true;
+  tourLastFocus = document.activeElement;
+  root.classList.add('is-open');
+  root.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  tourRender();
+  setTimeout(() => {
+    if (!tourActive) return;
+    const btn = document.getElementById('tourNext');
+    if (btn) btn.focus();
+  }, 80);
+}
+
+function closeTour() {
+  if (!tourActive) return;
+  tourActive = false;
+  const root = document.getElementById('tourRoot');
+  if (root) { root.classList.remove('is-open'); root.setAttribute('aria-hidden', 'true'); }
+  document.body.style.overflow = '';
+  if (!tourReplay) {
+    localStorage.setItem(TOUR_DISMISSED_KEY, '1');
+    markOnboardingDone();
+  }
+  if (tourLastFocus && typeof tourLastFocus.focus === 'function') tourLastFocus.focus();
+  if (tourReturnPage) goPage(tourReturnPage);
+  tourFlushDeferred();
+}
+
+function startTourReplay() { openTour({ replay: true }); }
+
+// 引导进行中先压住赞助弹窗 / 站内通知，关掉后再补发
+function tourDefer(fn) { tourDeferred.push(fn); }
+function tourFlushDeferred() {
+  const list = tourDeferred.splice(0);
+  list.forEach(fn => setTimeout(() => { try { fn(); } catch (e) {} }, 450));
+}
+
+function renderOnboarding() {
+  if (tourActive || tourAutoScheduled) return;
+  if ((currentUser && currentUser.onboardingDone) || localStorage.getItem(TOUR_DISMISSED_KEY) === '1') return;
+  const active = document.querySelector('.page.active');
+  if (active && active.id !== 'page-dashboard') return;
+  tourAutoScheduled = true;
+  setTimeout(() => {
+    if (currentUser && currentUser.onboardingDone) { tourAutoScheduled = false; return; }
+    openTour();
+  }, 900);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!tourActive) return;
+  if (e.key === 'Escape') { e.preventDefault(); closeTour(); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); nextTourStep(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); prevTourStep(); }
+  else if (e.key === 'Enter' && e.target && e.target.tagName !== 'BUTTON') { e.preventDefault(); nextTourStep(); }
+  else if (e.key === 'Tab') {
+    const items = Array.prototype.filter.call(
+      document.querySelectorAll('#tourPop button'),
+      b => b.offsetParent !== null && b.style.visibility !== 'hidden'
+    );
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
+});
+
+window.addEventListener('scroll', () => {
+  if (!tourActive) return;
+  cancelAnimationFrame(tourRaf);
+  tourRaf = requestAnimationFrame(tourPosition);
+}, true);
+window.addEventListener('resize', () => { if (tourActive) tourPosition(); });
+
+[['tourNext', nextTourStep], ['tourPrev', prevTourStep], ['tourSkip', closeTour], ['tourClose', closeTour]]
+  .forEach(([id, handler]) => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', handler);
+  });
 
 /* ============================================================
    User
@@ -2045,7 +2274,7 @@ function renderNotifySettings(d) {
     '<label class="toggle"><input type="checkbox" id="ncEmail" ' + (mailOn ? 'checked' : '') + (avail.email ? '' : ' disabled') + '><span class="toggle-track"></span></label></div>' +
     '<div style="margin-top:18px;">' +
       '<strong style="font-size:14px;">什么时候通知</strong>' +
-      '<p style="font-size:12px;color:var(--text-tertiary);margin:4px 0 10px;">默认只在失败时通知，成功不打扰。</p>' +
+      '<p style="font-size:12px;color:var(--text-tertiary);margin:4px 0 10px;">默认成功和失败都通知；想少打扰可以改成「仅失败时通知」。</p>' +
       '<label style="display:flex;align-items:center;gap:8px;font-size:14px;margin-bottom:8px;cursor:pointer;"><input type="radio" name="notifyLevel" value="failure_only" ' + (level === 'failure_only' ? 'checked' : '') + (!hasAnyChannel ? ' disabled' : '') + '> 仅失败时通知</label>' +
       '<label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;"><input type="radio" name="notifyLevel" value="always" ' + (level === 'always' ? 'checked' : '') + (!hasAnyChannel ? ' disabled' : '') + '> 成功和失败都通知</label>' +
       (hasAnyChannel ? '' : '<p style="font-size:12px;color:var(--amber);margin-top:10px;">请先绑定微信或验证邮箱，才能开启签到通知。</p>') +
@@ -2803,6 +3032,7 @@ function copyShareLink() {
 }
 
 function showSponsorModal() {
+  if (tourActive) { tourDefer(showSponsorModal); return; }
   if (currentUser && currentUser.isVip) return;
   if (localStorage.getItem('semesterServiceNoticeClosed_v1')) return;
   const modal = document.getElementById('sponsorModal');
@@ -2850,13 +3080,14 @@ function escapeNoticeText(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
 }
 function showNextNotice() {
+  if (tourActive) { tourDefer(showNextNotice); return; }
   if (!noticeQueue.length) return;
   const n = noticeQueue.shift();
   const mask = document.getElementById('noticeModal');
   const title = document.getElementById('noticeModalTitle');
   const body = document.getElementById('noticeModalBody');
   if (title) title.textContent = n.title || '系统通知';
-  if (body) body.innerHTML = `<p style="line-height:1.9;margin:0;">${escapeNoticeText(n.content)}</p><p style="margin:10px 0 0;font-size:12px;color:#94a3b8;">${new Date(n.createdAt || Date.now()).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`;
+  if (body) body.innerHTML = `<p style="line-height:1.9;margin:0;">${escapeNoticeText(n.content)}</p><p style="margin:10px 0 0;font-size:12px;color:var(--text-tertiary);">${new Date(n.createdAt || Date.now()).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>`;
   if (mask) mask.classList.add('show');
   document.body.style.overflow = 'hidden';
   if (window.Notification && Notification.permission === 'granted') {
