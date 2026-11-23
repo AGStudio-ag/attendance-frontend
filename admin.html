@@ -219,6 +219,7 @@
           <div class="stat-card"><div class="stat-value" id="statVipUsers">0</div><div class="stat-label">会员用户</div></div>
           <div class="stat-card"><div class="stat-value" id="statTodaySigns">0</div><div class="stat-label">今日签到</div></div>
           <div class="stat-card"><div class="stat-value" id="statMarketUsers">0</div><div class="stat-label">交易用户</div></div>
+          <div class="stat-card"><div class="stat-value" id="statKaoyanIntent">0</div><div class="stat-label">考研预约</div></div>
         </div>
         <div class="content-card">
           <div class="card-header"><h3><i class="fas fa-chart-line"></i> 系统概览</h3></div>
@@ -956,6 +957,8 @@
           document.getElementById('statVipUsers').textContent = data.stats.users.vip;
           document.getElementById('statTodaySigns').textContent = data.stats.signs.today;
           document.getElementById('statMarketUsers').textContent = data.stats.users.market || 0;
+          const kaoyanEl = document.getElementById('statKaoyanIntent');
+          if (kaoyanEl) kaoyanEl.textContent = (data.stats.kaoyan && data.stats.kaoyan.intent) || 0;
 
           const todaySigns = data.stats.signs.today || 0;
           const totalUsers = data.stats.users.total || 1;
@@ -971,6 +974,7 @@
               <tr><td>交易平台用户</td><td><strong>${data.stats.users.market || 0}</strong></td></tr>
               <tr><td>今日新增用户</td><td><strong>${data.stats.users.today}</strong></td></tr>
               <tr><td>总邀请次数</td><td><strong>${data.stats.invites?.total || 0}</strong></td></tr>
+              <tr><td>考研意向预约</td><td><strong>${(data.stats.kaoyan && data.stats.kaoyan.intent) || 0}</strong></td></tr>
             </table>
             <div style="margin-top:14px; background:#f8f9fc; padding:12px; border-radius:8px;">
               <strong>📊 今日签到热力</strong>
